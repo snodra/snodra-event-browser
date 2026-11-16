@@ -1,6 +1,7 @@
 //! A real hub for the tests: a `kraken-hub` container from the hub's image (`KRAKEN_HUB_IMAGE`,
-//! default `kraken-hub:modular`), configured by its `KRAKEN_HUB_*` variables, with its gRPC and HTTP
-//! ports mapped on the loopback. This repository depends on the hub's image, never on its source.
+//! default `kraken-hub:modular`), configured by its `KRAKEN_HUB_*` variables, with its gRPC and
+//! HTTP ports mapped on the loopback. This repository depends on the hub's image, never on its
+//! source.
 //! Needs Docker.
 
 #![allow(dead_code)]

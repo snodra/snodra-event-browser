@@ -1,10 +1,10 @@
 //! End to end on Docker: a Kafka container, a hub container (the hub's image, see
-//! `hub_container`), and the browser in process on the Kafka add-on, as `kraken-event-browser` runs it (`run`, settings
-//! from variables). Events are published with the add-on; everything is read through the hub's
-//! HTTP API: search (filters, paging), a record with and without its payload under the hub's
-//! payload rules, the sources, the lag of a subscription without a live instance, a tail that
-//! delivers a new event and ends on time, a busy browser as 429, and 404 on every route once the
-//! browser stopped.
+//! `hub_container`), and the browser in process on the Kafka add-on, as `kraken-event-browser`
+//! runs it (`run`, settings from variables). Events are published with the add-on; everything is
+//! read through the hub's HTTP API: search (filters, paging), a record with and without its
+//! payload under the hub's payload rules, the sources, the lag of a subscription without a live
+//! instance, a tail that delivers a new event and ends on time, a busy browser as 429, and 404 on
+//! every route once the browser stopped.
 
 mod hub_container;
 
