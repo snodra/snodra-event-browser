@@ -1,0 +1,55 @@
+[package]
+name = "kraken-event-browser"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+description = "The hub's event browser add-on: answers kraken.events.* queries from the event store (ADR 0027)"
+license = "MIT"
+publish = false
+
+# A workspace of its own, next to the hub's package: the hub's build, lock file and image never
+# load this crate or the event-store clients it links (see the README, "Event browser add-on").
+[workspace]
+
+[lib]
+name = "kraken_event_browser"
+
+[[bin]]
+name = "kraken-event-browser"
+path = "src/main.rs"
+
+[dependencies]
+# kraken-messaging-rs by git, pinned to the merged commit of its feat/modular-stores (no release
+# yet): becomes `tag = "v0.5.0"` after the library's release. The ssh URL works on a developer
+# machine with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a
+# deploy token (see the README, "Event browser add-on").
+kraken-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", rev = "d66ae06e19cd782d0be1334ff1d62aab83854aa6" }
+kraken-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", rev = "d66ae06e19cd782d0be1334ff1d62aab83854aa6" }
+# The Kafka add-on builds librdkafka from source with zstd; the image also links zlib statically
+# (as the hub's image did while it read Kafka), so the distroless runtime needs no extra library.
+rdkafka = { version = "0.39.0", features = ["cmake-build", "libz-static", "zstd"] }
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-util = "0.7.20"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+# Metrics (ADR 0026): pushed over OTLP like the hub's and the services'.
+opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }
+opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["metrics", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["grpc-tonic", "metrics"] }
+# Health (as the hub): the gRPC health service and a `--health-check` probe of it.
+tonic = "0.14.8"
+tonic-health = "0.14.8"
+
+[dev-dependencies]
+# The end-to-end test runs the hub in process.
+kraken-hub = { path = ".." }
+tokio = { version = "1.54.1", features = ["full", "test-util"] }
+opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["metrics", "testing"] }
+testcontainers = "0.27"
+testcontainers-modules = { version = "0.15.0", features = ["kafka"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["stream"] }
+bytes = "1"
+uuid = { version = "1", features = ["v4"] }
