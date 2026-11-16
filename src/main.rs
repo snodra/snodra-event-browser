@@ -1,5 +1,4 @@
-//! `kraken-event-browser`: the hub's event browser add-on (see the crate docs and the hub's
-//! README, "Event browser add-on").
+//! `kraken-event-browser`: the hub's event browser add-on (see the crate docs and the README).
 //!
 //! - `kraken-event-browser` runs it (settings from the environment);
 //! - `kraken-event-browser --health-check` probes the local browser's gRPC health service (the

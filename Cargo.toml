@@ -7,8 +7,6 @@ description = "The hub's event browser add-on: answers kraken.events.* queries f
 license = "MIT"
 publish = false
 
-# A workspace of its own, next to the hub's package: the hub's build, lock file and image never
-# load this crate or the event-store clients it links (see the README, "Event browser add-on").
 [workspace]
 
 [lib]
@@ -22,7 +20,7 @@ path = "src/main.rs"
 # kraken-messaging-rs by git, pinned to the merged commit of its feat/modular-stores (no release
 # yet): becomes `tag = "v0.5.0"` after the library's release. The ssh URL works on a developer
 # machine with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a
-# deploy token (see the README, "Event browser add-on").
+# deploy token (see the README, "The library dependency").
 kraken-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", rev = "d66ae06e19cd782d0be1334ff1d62aab83854aa6" }
 kraken-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", rev = "d66ae06e19cd782d0be1334ff1d62aab83854aa6" }
 # The Kafka add-on builds librdkafka from source with zstd; the image also links zlib statically
