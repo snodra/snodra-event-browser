@@ -1,54 +1,25 @@
-//! The browser behind a real hub (in process), on an event store double: it registers as
-//! `kraken-event-browser` with the five types, the hub's `/api/v1/events*` routes answer through
-//! it, a tail streams `start`, records and heartbeats and ends `shutdown` when the browser
-//! stops, a reader that leaves frees the browser's tail slot, a busy browser is a 429, and the
-//! health service follows the hub connection. No Docker.
+//! The browser behind a real hub (the hub's image, see `hub_container`), on an event store
+//! double: it registers as `kraken-event-browser` with the five types, the hub's
+//! `/api/v1/events*` routes answer through it, a tail streams `start`, records and heartbeats and
+//! ends `shutdown` when the browser stops, a reader that leaves frees the browser's tail slot, a
+//! busy browser is a 429, and the health service follows the hub connection. Needs Docker for the
+//! hub.
 
 mod common;
+mod hub_container;
 
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use common::{Double, summary};
 use futures::StreamExt;
+use hub_container::{Hub, hub, hub_with};
 use kraken_event_browser::{Browsers, Settings};
 use kraken_messaging::event_store::browse::LagView;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
-
-pub struct Hub {
-    pub grpc: SocketAddr,
-    pub http: SocketAddr,
-    _stop: oneshot::Sender<()>,
-}
-
-pub async fn hub() -> Hub {
-    hub_with(kraken_hub::config::Config {
-        otlp_endpoint: None,
-        ..kraken_hub::config::Config::default()
-    })
-    .await
-}
-
-pub async fn hub_with(config: kraken_hub::config::Config) -> Hub {
-    let grpc = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let http = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let (grpc_addr, http_addr) = (grpc.local_addr().unwrap(), http.local_addr().unwrap());
-    let (stop, stopped) = oneshot::channel::<()>();
-    tokio::spawn(async move {
-        kraken_hub::serve_with_shutdown(config, grpc, Some(http), async {
-            let _ = stopped.await;
-        })
-        .await
-        .unwrap();
-    });
-    Hub {
-        grpc: grpc_addr,
-        http: http_addr,
-        _stop: stop,
-    }
-}
 
 pub struct Running {
     stop: Option<oneshot::Sender<()>>,
@@ -340,7 +311,7 @@ async fn health_follows_the_hub_connection() {
     let double = Double::new(1);
     let browser = start_browser(&hub, &double, settings(Some(health)));
     until_health(health, true).await;
-    drop(hub); // the hub stops
+    hub.stop().await;
     until_health(health, false).await;
     browser.stop().await;
     assert!(
@@ -354,21 +325,19 @@ async fn health_follows_the_hub_connection() {
 #[tokio::test]
 async fn a_refused_browser_is_not_serving_and_retries_slowly() {
     let token = "a-browser-token-without-the-right";
-    let acl = std::env::temp_dir().join(format!("e1b-acl-{}.toml", uuid::Uuid::new_v4()));
-    std::fs::write(
-        &acl,
-        format!(
-            "[[token]]\ntoken_sha256 = \"{}\"\nservice = \"kraken-event-browser\"\n",
-            kraken_hub::auth::hash_token(token)
-        ),
+    let digest: String = Sha256::digest(token.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let acl =
+        format!("[[token]]\ntoken_sha256 = \"{digest}\"\nservice = \"kraken-event-browser\"\n");
+    let hub = hub_with(
+        &[
+            ("KRAKEN_HUB_AUTH_MODE", "enforce"),
+            ("KRAKEN_HUB_ACL_FILE", "/app/acl.toml"),
+        ],
+        &[("/app/acl.toml", &acl)],
     )
-    .unwrap();
-    let hub = hub_with(kraken_hub::config::Config {
-        otlp_endpoint: None,
-        auth_mode: kraken_hub::auth::AuthMode::Enforce,
-        acl_file: Some(acl.clone()),
-        ..kraken_hub::config::Config::default()
-    })
     .await;
     // A proxy in front of the hub counts the browser's connection attempts.
     let proxy = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -409,7 +378,6 @@ async fn a_refused_browser_is_not_serving_and_retries_slowly() {
         (404, Some("event browser not installed"))
     );
     browser.stop().await;
-    let _ = std::fs::remove_file(acl);
 }
 
 #[tokio::test]

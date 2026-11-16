@@ -1,10 +1,12 @@
-//! End to end on Docker: a Kafka container, the hub in process (this repository's package), and
-//! the browser in process on the Kafka add-on, as `kraken-event-browser` runs it (`run`, settings
+//! End to end on Docker: a Kafka container, a hub container (the hub's image, see
+//! `hub_container`), and the browser in process on the Kafka add-on, as `kraken-event-browser` runs it (`run`, settings
 //! from variables). Events are published with the add-on; everything is read through the hub's
 //! HTTP API: search (filters, paging), a record with and without its payload under the hub's
 //! payload rules, the sources, the lag of a subscription without a live instance, a tail that
 //! delivers a new event and ends on time, a busy browser as 429, and 404 on every route once the
 //! browser stopped.
+
+mod hub_container;
 
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
@@ -66,28 +68,18 @@ fn event(id: &str, type_name: &str, key: &str, correlation: &str, payload: &str)
     }
 }
 
-async fn hub() -> (SocketAddr, SocketAddr, oneshot::Sender<()>) {
-    let grpc = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let http = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addrs = (grpc.local_addr().unwrap(), http.local_addr().unwrap());
-    let (stop, stopped) = oneshot::channel::<()>();
-    let config = kraken_hub::config::Config {
-        otlp_endpoint: None,
-        // Reads are open; a payload is served to a request presenting the write token.
-        dashboard_write_token: Some(kraken_hub::auth::Secret::new(TOKEN)),
-        event_payloads: true,
-        // Tails end on time within the test: the hub asks 2 s under this.
-        max_stream_duration: Duration::from_secs(6),
-        ..kraken_hub::config::Config::default()
-    };
-    tokio::spawn(async move {
-        kraken_hub::serve_with_shutdown(config, grpc, Some(http), async {
-            let _ = stopped.await;
-        })
-        .await
-        .unwrap();
-    });
-    (addrs.0, addrs.1, stop)
+async fn hub() -> hub_container::Hub {
+    hub_container::hub_with(
+        &[
+            // Reads are open; a payload is served to a request presenting the write token.
+            ("KRAKEN_HUB_DASHBOARD_WRITE_TOKEN", TOKEN),
+            ("KRAKEN_HUB_EVENT_BROWSER_PAYLOADS", "true"),
+            // Tails end on time within the test: the hub asks 2 s under this.
+            ("KRAKEN_HUB_MAX_STREAM_DURATION", "6s"),
+        ],
+        &[],
+    )
+    .await
 }
 
 async fn get(http: SocketAddr, path: &str, token: Option<&str>) -> (u16, Value) {
@@ -227,7 +219,8 @@ async fn the_dashboard_reads_kafka_through_the_hub_and_the_browser() {
     }
     subscription.close().await;
 
-    let (grpc, http, _hub) = hub().await;
+    let hub = hub().await;
+    let (grpc, http) = (hub.grpc, hub.http);
     let vars: BTreeMap<String, String> = [
         ("KRAKEN_KAFKA_BOOTSTRAP", bootstrap.as_str()),
         ("KRAKEN_EVENT_BROWSER_MAX_TAILS", "1"),

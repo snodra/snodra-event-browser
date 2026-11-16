@@ -42,12 +42,13 @@ tonic = "0.14.8"
 tonic-health = "0.14.8"
 
 [dev-dependencies]
-# The end-to-end test runs the hub in process.
-kraken-hub = { path = ".." }
 tokio = { version = "1.54.1", features = ["full", "test-util"] }
 opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["metrics", "testing"] }
+# The tests run the hub from its image (KRAKEN_HUB_IMAGE) and the event store in containers.
 testcontainers = "0.27"
 testcontainers-modules = { version = "0.15.0", features = ["kafka"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["stream"] }
 bytes = "1"
 uuid = { version = "1", features = ["v4"] }
+# The digest of a static token in the hub's ACL file.
+sha2 = "0.10"
