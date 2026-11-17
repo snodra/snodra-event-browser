@@ -1535,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "kraken-messaging-kafka"
 version = "0.1.0"
-source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?rev=d66ae06e19cd782d0be1334ff1d62aab83854aa6#d66ae06e19cd782d0be1334ff1d62aab83854aa6"
+source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?tag=v0.5.0#5d4e89959ead853bc43ddb3d89a222b30effb267"
 dependencies = [
  "futures",
  "kraken-messaging-rs",
@@ -1549,7 +1549,7 @@ dependencies = [
 [[package]]
 name = "kraken-messaging-rs"
 version = "0.1.0"
-source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?rev=d66ae06e19cd782d0be1334ff1d62aab83854aa6#d66ae06e19cd782d0be1334ff1d62aab83854aa6"
+source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?tag=v0.5.0#5d4e89959ead853bc43ddb3d89a222b30effb267"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -3086,7 +3086,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
