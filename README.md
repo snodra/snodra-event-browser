@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Snodra mascot" src="https://snodra.damoreira.com/assets/brand/svg/snodra.svg" width="160">
+  <img alt="Snodra mascot" src="docs/assets/brand/svg/snodra.svg" width="160">
 </p>
 
 <h1 align="center">snodra-event-browser</h1>
@@ -14,7 +14,7 @@
   <img alt="Rust" src="https://img.shields.io/badge/Rust-1.99.1-000000?logo=rust&logoColor=white">
   <img alt="image" src="https://img.shields.io/badge/image-distroless-blue?logo=docker&logoColor=white">
   <a href="https://snodra.damoreira.com/"><img alt="Snodra docs" src="https://img.shields.io/badge/docs-snodra.damoreira.com-0B5FFF"></a>
-  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
 </p>
 
 ---
@@ -306,4 +306,4 @@ CI/CD variables (masked where secret, visible to this project as group or projec
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE).

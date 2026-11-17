@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 description = "Snodra Server's event browser add-on: answers snodra.events.* queries from the event store (ADR 0027)"
-license = "MIT"
+license = "Apache-2.0"
 publish = false
 
 [workspace]
