@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::future::BoxFuture;
-use kraken_messaging::event_store::browse::{
+use snodra_messaging::event_store::browse::{
     BrowseError, EndReason, EventBrowser, EventRecord, EventSummary, GetRequest, LagRequest,
     LagView, SearchPage, SearchRequest, SegmentBounds, SourceView, SourcesRequest, SourcesView,
     StoppedBy, TailFeed, TailRequest, TailStart, TailStream, tail_channel,

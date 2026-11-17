@@ -1,12 +1,12 @@
-//! Health, as the hub does it: the gRPC health service (`grpc.health.v1.Health`, service `""`)
-//! on `KRAKEN_EVENT_BROWSER_HEALTH_LISTEN`, and `kraken-event-browser --health-check` probing it
+//! Health, as the server does it: the gRPC health service (`grpc.health.v1.Health`, service `""`)
+//! on `SNODRA_EVENT_BROWSER_HEALTH_LISTEN`, and `snodra-event-browser --health-check` probing it
 //! (the distroless image has no shell or curl). `SERVING` while at least one hub has the
 //! browser registered (it can answer); `NOT_SERVING` before, while no hub is reachable, and
 //! from the start of a shutdown.
 
 use std::net::SocketAddr;
 
-use kraken_messaging::MessagingError;
+use snodra_messaging::MessagingError;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tonic_health::ServingStatus;
@@ -48,7 +48,7 @@ pub async fn serve(addr: SocketAddr, stop: CancellationToken) -> Result<Health, 
         .await;
     let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
         MessagingError::Transport(format!(
-            "cannot listen on {addr} (KRAKEN_EVENT_BROWSER_HEALTH_LISTEN): {e}"
+            "cannot listen on {addr} (SNODRA_EVENT_BROWSER_HEALTH_LISTEN): {e}"
         ))
     })?;
     tracing::info!(addr = %listener.local_addr().unwrap_or(addr), "health service listening");

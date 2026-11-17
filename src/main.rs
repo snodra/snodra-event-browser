@@ -1,17 +1,18 @@
-//! `kraken-event-browser`: the hub's event browser add-on (see the crate docs and the README).
+//! `snodra-event-browser`: Snodra Server's event browser add-on (see the crate docs and the
+//! README).
 //!
-//! - `kraken-event-browser` runs it (settings from the environment);
-//! - `kraken-event-browser --health-check` probes the local browser's gRPC health service (the
+//! - `snodra-event-browser` runs it (settings from the environment);
+//! - `snodra-event-browser --health-check` probes the local browser's gRPC health service (the
 //!   image's `HEALTHCHECK`) and exits 0 when it is `SERVING`, 1 otherwise;
-//! - `kraken-event-browser --version` prints the version.
+//! - `snodra-event-browser --version` prints the version.
 
 use std::process::ExitCode;
 use std::time::Duration;
 
-use kraken_event_browser::{SERVICE, Settings, health, telemetry};
-use kraken_messaging::Config;
+use snodra_event_browser::{SERVICE, Settings, health, telemetry};
+use snodra_messaging::Config;
 
-const USAGE: &str = "usage:\n  kraken-event-browser                 run the event browser\n  kraken-event-browser --health-check  probe the local browser's gRPC health service\n  kraken-event-browser --version       print the version";
+const USAGE: &str = "usage:\n  snodra-event-browser                 run the event browser\n  snodra-event-browser --health-check  probe the local browser's gRPC health service\n  snodra-event-browser --version       print the version";
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 
 fn main() -> ExitCode {
@@ -28,12 +29,12 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    // The browser registers as `kraken-event-browser`; the library reads the service name (and
-    // derives the OAuth2 client id from it) from KRAKEN_SERVICE_NAME. Set before any thread
+    // The browser registers as `snodra-event-browser`; the library reads the service name (and
+    // derives the OAuth2 client id from it) from SNODRA_SERVICE_NAME. Set before any thread
     // exists, so changing the environment is sound.
-    if std::env::var_os("KRAKEN_SERVICE_NAME").is_none() {
+    if std::env::var_os("SNODRA_SERVICE_NAME").is_none() {
         // SAFETY: single-threaded here: no runtime or other thread has started.
-        unsafe { std::env::set_var("KRAKEN_SERVICE_NAME", SERVICE) };
+        unsafe { std::env::set_var("SNODRA_SERVICE_NAME", SERVICE) };
     }
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime,
@@ -76,7 +77,7 @@ async fn run() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match kraken_event_browser::run(config, settings, kraken_event_browser::shutdown_signal()).await
+    match snodra_event_browser::run(config, settings, snodra_event_browser::shutdown_signal()).await
     {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
@@ -90,7 +91,7 @@ async fn health_check() -> ExitCode {
     let listen = match Settings::from_env().map(|s| s.health_listen) {
         Ok(Some(listen)) => listen,
         Ok(None) => {
-            println!("{SERVICE}: the health service is off (KRAKEN_EVENT_BROWSER_HEALTH_LISTEN)");
+            println!("{SERVICE}: the health service is off (SNODRA_EVENT_BROWSER_HEALTH_LISTEN)");
             return ExitCode::FAILURE;
         }
         Err(e) => {
@@ -98,7 +99,7 @@ async fn health_check() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let addr = kraken_event_browser::probe_address(listen);
+    let addr = snodra_event_browser::probe_address(listen);
     match tokio::time::timeout(PROBE_TIMEOUT, health::probe(addr)).await {
         Ok(Ok(true)) => {
             println!("{SERVICE} at {addr}: SERVING");

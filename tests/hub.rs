@@ -1,5 +1,5 @@
 //! The browser behind a real hub (the hub's image, see `hub_container`), on an event store
-//! double: it registers as `kraken-event-browser` with the five types, the hub's
+//! double: it registers as `snodra-event-browser` with the five types, the hub's
 //! `/api/v1/events*` routes answer through it, a tail streams `start`, records and heartbeats and
 //! ends `shutdown` when the browser stops, a reader that leaves frees the browser's tail slot, a
 //! busy browser is a 429, and the health service follows the hub connection. Needs Docker for the
@@ -14,16 +14,16 @@ use std::time::{Duration, Instant};
 use common::{Double, summary};
 use futures::StreamExt;
 use hub_container::{Hub, hub, hub_with};
-use kraken_event_browser::{Browsers, Settings};
-use kraken_messaging::event_store::browse::LagView;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use snodra_event_browser::{Browsers, Settings};
+use snodra_messaging::event_store::browse::LagView;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
 pub struct Running {
     stop: Option<oneshot::Sender<()>>,
-    task: JoinHandle<Result<(), kraken_messaging::MessagingError>>,
+    task: JoinHandle<Result<(), snodra_messaging::MessagingError>>,
 }
 
 impl Running {
@@ -46,15 +46,15 @@ fn settings(health: Option<SocketAddr>) -> Settings {
 }
 
 pub fn start_browser(hub: &Hub, double: &Double, settings: Settings) -> Running {
-    let config = kraken_messaging::Config::new(
-        kraken_event_browser::SERVICE,
+    let config = snodra_messaging::Config::new(
+        snodra_event_browser::SERVICE,
         &format!("static://{}", hub.grpc),
     );
     start_browser_with(config, double, settings)
 }
 
 pub fn start_browser_with(
-    config: kraken_messaging::Config,
+    config: snodra_messaging::Config,
     double: &Double,
     settings: Settings,
 ) -> Running {
@@ -63,7 +63,7 @@ pub fn start_browser_with(
         lag: None,
     };
     let (stop, stopped) = oneshot::channel::<()>();
-    let task = tokio::spawn(kraken_event_browser::serve(
+    let task = tokio::spawn(snodra_event_browser::serve(
         config,
         settings,
         browsers,
@@ -294,7 +294,7 @@ fn free_port() -> SocketAddr {
 async fn until_health(health: SocketAddr, serving: bool) {
     let deadline = Instant::now() + Duration::from_secs(15);
     loop {
-        if kraken_event_browser::health::probe(health).await == Ok(serving) {
+        if snodra_event_browser::health::probe(health).await == Ok(serving) {
             return;
         }
         assert!(Instant::now() < deadline, "health never became {serving}");
@@ -315,7 +315,7 @@ async fn health_follows_the_hub_connection() {
     until_health(health, false).await;
     browser.stop().await;
     assert!(
-        kraken_event_browser::health::probe(health).await.is_err(),
+        snodra_event_browser::health::probe(health).await.is_err(),
         "the health service stops with the browser"
     );
 }
@@ -330,11 +330,11 @@ async fn a_refused_browser_is_not_serving_and_retries_slowly() {
         .map(|b| format!("{b:02x}"))
         .collect();
     let acl =
-        format!("[[token]]\ntoken_sha256 = \"{digest}\"\nservice = \"kraken-event-browser\"\n");
+        format!("[[token]]\ntoken_sha256 = \"{digest}\"\nservice = \"snodra-event-browser\"\n");
     let hub = hub_with(
         &[
-            ("KRAKEN_HUB_AUTH_MODE", "enforce"),
-            ("KRAKEN_HUB_ACL_FILE", "/app/acl.toml"),
+            ("SNODRA_SERVER_AUTH_MODE", "enforce"),
+            ("SNODRA_SERVER_ACL_FILE", "/app/acl.toml"),
         ],
         &[("/app/acl.toml", &acl)],
     )
@@ -356,17 +356,17 @@ async fn a_refused_browser_is_not_serving_and_retries_slowly() {
             }
         });
     }
-    let mut config = kraken_messaging::Config::new(
-        kraken_event_browser::SERVICE,
+    let mut config = snodra_messaging::Config::new(
+        snodra_event_browser::SERVICE,
         &format!("static://{proxy_addr}"),
     );
-    config.hub_token = Some(kraken_messaging::SecretString::new(token));
+    config.hub_token = Some(snodra_messaging::SecretString::new(token));
     let health = free_port();
     let double = Double::new(1);
     let browser = start_browser_with(config, &double, settings(Some(health)));
     let watched = Instant::now();
     while watched.elapsed() < Duration::from_secs(7) {
-        let probe = kraken_event_browser::health::probe(health).await;
+        let probe = snodra_event_browser::health::probe(health).await;
         assert!(probe != Ok(true), "a refused browser is never SERVING");
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
@@ -384,8 +384,8 @@ async fn a_refused_browser_is_not_serving_and_retries_slowly() {
 async fn a_browser_under_another_service_name_does_not_start() {
     let hub = hub().await;
     let double = Double::new(1);
-    let config = kraken_messaging::Config::new("orders", &format!("static://{}", hub.grpc));
-    let err = kraken_event_browser::serve(
+    let config = snodra_messaging::Config::new("orders", &format!("static://{}", hub.grpc));
+    let err = snodra_event_browser::serve(
         config,
         settings(None),
         Browsers {
@@ -396,7 +396,7 @@ async fn a_browser_under_another_service_name_does_not_start() {
     )
     .await
     .unwrap_err();
-    assert!(err.to_string().contains("kraken-event-browser"), "{err}");
+    assert!(err.to_string().contains("snodra-event-browser"), "{err}");
 }
 
 /// A caller that leaves a search: the hub forgets the request at once (the next search is

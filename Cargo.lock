@@ -1506,77 +1506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kraken-event-browser"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "futures",
- "kraken-messaging-kafka",
- "kraken-messaging-rs",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "rdkafka",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "testcontainers",
- "testcontainers-modules",
- "tokio",
- "tokio-util",
- "tonic",
- "tonic-health",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "kraken-messaging-kafka"
-version = "0.1.0"
-source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?tag=v0.5.1#a3aad26ec0f37e3b5c4126da9016deee91fd184b"
-dependencies = [
- "futures",
- "kraken-messaging-rs",
- "rdkafka",
- "tokio",
- "tokio-util",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "kraken-messaging-rs"
-version = "0.1.0"
-source = "git+ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git?tag=v0.5.1#a3aad26ec0f37e3b5c4126da9016deee91fd184b"
-dependencies = [
- "base64 0.23.1",
- "chrono",
- "futures",
- "jsonwebtoken",
- "opentelemetry",
- "prost",
- "prost-build",
- "reqwest",
- "rustls",
- "rustls-pki-types",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "tracing",
- "uuid",
- "x509-parser",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2958,6 +2887,77 @@ name = "smallvec"
 version = "1.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
+
+[[package]]
+name = "snodra-event-browser"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "rdkafka",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "snodra-messaging-kafka",
+ "snodra-messaging-rs",
+ "testcontainers",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-util",
+ "tonic",
+ "tonic-health",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "snodra-messaging-kafka"
+version = "0.1.0"
+source = "git+ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git?tag=v0.6.0#9d691525e00b97fcb1f757ebf44bdad3975472d8"
+dependencies = [
+ "futures",
+ "rdkafka",
+ "snodra-messaging-rs",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "snodra-messaging-rs"
+version = "0.1.0"
+source = "git+ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git?tag=v0.6.0#9d691525e00b97fcb1f757ebf44bdad3975472d8"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "jsonwebtoken",
+ "opentelemetry",
+ "prost",
+ "prost-build",
+ "reqwest",
+ "rustls",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
+ "tracing",
+ "uuid",
+ "x509-parser",
+]
 
 [[package]]
 name = "socket2"
