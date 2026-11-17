@@ -17,12 +17,11 @@ name = "kraken-event-browser"
 path = "src/main.rs"
 
 [dependencies]
-# kraken-messaging-rs by git, pinned to the merged commit of its feat/modular-stores (no release
-# yet): becomes `tag = "v0.5.0"` after the library's release. The ssh URL works on a developer
-# machine with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a
-# deploy token (see the README, "The library dependency").
-kraken-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.0" }
-kraken-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.0" }
+# kraken-messaging-rs by git, pinned to its release tag. The ssh URL works on a developer machine
+# with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a deploy token
+# (see the README, "The library dependency").
+kraken-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.1" }
+kraken-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.1" }
 # The Kafka add-on builds librdkafka from source with zstd; the image also links zlib statically
 # (as the hub's image did while it read Kafka), so the distroless runtime needs no extra library.
 rdkafka = { version = "0.39.0", features = ["cmake-build", "libz-static", "zstd"] }
