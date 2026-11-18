@@ -26,7 +26,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::kafka::apache::{self, Kafka};
 use tokio::sync::oneshot;
 
-const SOURCE: &str = "kraken.events";
+const SOURCE: &str = "snodra.events";
 const TOKEN: &str = "a-dashboard-token-0123456789";
 
 async fn create_topic(bootstrap: &str, partitions: i32) {

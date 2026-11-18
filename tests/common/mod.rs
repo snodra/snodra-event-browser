@@ -17,7 +17,7 @@ use snodra_messaging::event_store::browse::{
 };
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-pub const SOURCE: &str = "kraken.events";
+pub const SOURCE: &str = "snodra.events";
 
 /// A summary at `position` of segment `0` with `type` and a header of `pad` bytes.
 pub fn summary(position: usize, type_name: &str, pad: usize) -> EventSummary {

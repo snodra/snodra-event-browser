@@ -127,7 +127,7 @@ mod tests {
 
     fn start() -> TailStart {
         TailStart {
-            source: "kraken.events".into(),
+            source: "snodra.events".into(),
             segments: 3,
             ends_at_ms: 1,
         }

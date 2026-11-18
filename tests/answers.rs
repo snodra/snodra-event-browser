@@ -334,15 +334,15 @@ async fn the_lag_gauge_shows_every_subscription_of_every_source_and_forgets_the_
         ],
         truncated: false,
     });
-    let sources = vec![SOURCE.to_string(), "kraken.events.dlt".to_string()];
+    let sources = vec![SOURCE.to_string(), "snodra.events.dlt".to_string()];
     metric.refresh(&*double.browser(), &sources).await;
     assert_eq!(
         exported.gauge(LAG_GAUGE),
         [
-            point("audit.default", "kraken.events", 0),
-            point("orders.projector", "kraken.events", 6),
-            point("audit.default", "kraken.events.dlt", 0),
-            point("orders.projector", "kraken.events.dlt", 6),
+            point("audit.default", "snodra.events", 0),
+            point("orders.projector", "snodra.events", 6),
+            point("audit.default", "snodra.events.dlt", 0),
+            point("orders.projector", "snodra.events.dlt", 6),
         ]
     );
     // Each source asked by name.
@@ -356,7 +356,7 @@ async fn the_lag_gauge_shows_every_subscription_of_every_source_and_forgets_the_
         .collect();
     assert_eq!(
         asked,
-        [Some(SOURCE.into()), Some("kraken.events.dlt".into())]
+        [Some(SOURCE.into()), Some("snodra.events.dlt".into())]
     );
     assert_eq!(exported.counter(REFRESHES, "ok"), 2);
 
