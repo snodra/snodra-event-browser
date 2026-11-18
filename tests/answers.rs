@@ -8,23 +8,23 @@ mod common;
 use std::time::Duration;
 
 use common::{Double, SOURCE, summary};
-use kraken_event_browser::answers::{MAX_ANSWER, size};
-use kraken_event_browser::lag::{LAG_GAUGE, LagMetric, MAX_SUBSCRIPTIONS, REFRESHES};
-use kraken_event_browser::{Handlers, Tails};
-use kraken_messaging::event_store::browse::{
-    BrowseError, GetRequest, LagRequest, LagView, SearchRequest, SegmentBounds, SourceView,
-    SourcesRequest, SourcesView, SubscriptionLag,
-};
 use opentelemetry::metrics::MeterProvider;
 use opentelemetry_sdk::metrics::data::{AggregatedMetrics, MetricData};
 use opentelemetry_sdk::metrics::{InMemoryMetricExporter, SdkMeterProvider};
+use snodra_event_browser::answers::{MAX_ANSWER, size};
+use snodra_event_browser::lag::{LAG_GAUGE, LagMetric, MAX_SUBSCRIPTIONS, REFRESHES};
+use snodra_event_browser::{Handlers, Tails};
+use snodra_messaging::event_store::browse::{
+    BrowseError, GetRequest, LagRequest, LagView, SearchRequest, SegmentBounds, SourceView,
+    SourcesRequest, SourcesView, SubscriptionLag,
+};
 
 fn handlers(double: &Double) -> Handlers {
     Handlers::new(double.browser(), Duration::from_secs(10), Tails::new())
 }
 
 /// 300 events of some 12 KiB each: a page of 300 is some 3.6 MiB.
-fn big_events() -> Vec<kraken_messaging::event_store::browse::EventSummary> {
+fn big_events() -> Vec<snodra_messaging::event_store::browse::EventSummary> {
     (0..300)
         .map(|i| summary(i, "orders.Placed", 12_000))
         .collect()
@@ -437,7 +437,7 @@ async fn the_lag_task_refreshes_on_its_interval_until_stopped() {
     let metric = std::sync::Arc::new(LagMetric::new(&exported.provider.meter("test")));
     let double = Double::new(1);
     let stop = tokio_util::sync::CancellationToken::new();
-    let task = tokio::spawn(kraken_event_browser::lag::run(
+    let task = tokio::spawn(snodra_event_browser::lag::run(
         metric,
         double.browser(),
         vec![SOURCE.to_string()],

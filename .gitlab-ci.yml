@@ -17,42 +17,42 @@ variables:
   CARGO_TERM_COLOR: always
   TESTCONTAINERS_RYUK_DISABLED: "true"
 
-# kraken-messaging-rs, a git dependency, is named by its ssh URL (works on a developer machine with
+# snodra-messaging-rs, a git dependency, is named by its ssh URL (works on a developer machine with
 # ssh access). On the runner cargo fetches it with the git CLI over https with the deploy token
-# KRAKEN_MESSAGING_RS_DEPLOY_USER / _TOKEN: the URL rewrite lives in the job's environment only
+# SNODRA_MESSAGING_RS_DEPLOY_USER / _TOKEN: the URL rewrite lives in the job's environment only
 # (GIT_CONFIG_COUNT, git 2.31+), so nothing is written to the shell runner's git configuration and
 # no command line shows the token.
-.kraken-messaging-rs-fetch:
+.snodra-messaging-rs-fetch:
   variables:
     CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-    KRAKEN_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git"
+    SNODRA_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git"
   before_script:
     - export GIT_CONFIG_COUNT=1
-    - export GIT_CONFIG_KEY_0="url.https://${KRAKEN_MESSAGING_RS_DEPLOY_USER}:${KRAKEN_MESSAGING_RS_DEPLOY_TOKEN}@${CI_SERVER_HOST}/kraken-org/kraken-messaging-rs.git.insteadOf"
-    - export GIT_CONFIG_VALUE_0="$KRAKEN_MESSAGING_RS_SSH_URL"
+    - export GIT_CONFIG_KEY_0="url.https://${SNODRA_MESSAGING_RS_DEPLOY_USER}:${SNODRA_MESSAGING_RS_DEPLOY_TOKEN}@${CI_SERVER_HOST}/snodra/snodra-messaging-rs.git.insteadOf"
+    - export GIT_CONFIG_VALUE_0="$SNODRA_MESSAGING_RS_SSH_URL"
 
 fmt:
-  extends: .kraken-messaging-rs-fetch
+  extends: .snodra-messaging-rs-fetch
   stage: check
   script:
     - cargo fmt --all -- --check
 
 clippy:
-  extends: .kraken-messaging-rs-fetch
+  extends: .snodra-messaging-rs-fetch
   stage: check
   script:
     - cargo clippy --all-targets --all-features -- -D warnings
 
-# The tests behind a real hub run the hub's released image (KRAKEN_HUB_IMAGE, the group variable
+# The tests behind a real hub run the hub's released image (SNODRA_SERVER_IMAGE, the group variable
 # the hub's release maintains), pulled from Harbor first; the end-to-end test adds the event
 # store's container.
 test:
-  extends: .kraken-messaging-rs-fetch
+  extends: .snodra-messaging-rs-fetch
   stage: test
   before_script:
-    - !reference [.kraken-messaging-rs-fetch, before_script]
+    - !reference [.snodra-messaging-rs-fetch, before_script]
     - echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin "$HARBOR_HOST"
-    - docker pull "$KRAKEN_HUB_IMAGE"
+    - docker pull "$SNODRA_SERVER_IMAGE"
   script:
     - cargo test --all-features -- --test-threads=1
 
@@ -64,8 +64,8 @@ release:
   variables:
     GIT_DEPTH: "0"
     DOCKER_BUILDKIT: "1"
-    IMAGE_NAME: kraken-event-browser
-    KRAKEN_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git"
+    IMAGE_NAME: snodra-event-browser
+    SNODRA_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git"
   before_script:
     - git fetch --tags --force
   script:
@@ -122,16 +122,16 @@ release:
       fi
       IMAGE="$HARBOR_HOST/$HARBOR_PROJECT/$IMAGE_NAME"
       # The image is built before anything is published: a failed build (it fetches
-      # kraken-messaging-rs with the deploy token) stops the release with no tag and no image.
+      # snodra-messaging-rs with the deploy token) stops the release with no tag and no image.
       # The builder reads a git configuration as the BuildKit secret `gitconfig` (never a layer)
       # that rewrites the library's ssh URL to https with the deploy token.
-      KRAKEN_GITCONFIG=$(printf '[url "https://%s:%s@%s/kraken-org/kraken-messaging-rs.git"]\n\tinsteadOf = %s\n' \
-        "$KRAKEN_MESSAGING_RS_DEPLOY_USER" "$KRAKEN_MESSAGING_RS_DEPLOY_TOKEN" "$CI_SERVER_HOST" "$KRAKEN_MESSAGING_RS_SSH_URL")
-      export KRAKEN_GITCONFIG
-      docker build --secret id=gitconfig,env=KRAKEN_GITCONFIG -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
-      unset KRAKEN_GITCONFIG
+      SNODRA_GITCONFIG=$(printf '[url "https://%s:%s@%s/snodra/snodra-messaging-rs.git"]\n\tinsteadOf = %s\n' \
+        "$SNODRA_MESSAGING_RS_DEPLOY_USER" "$SNODRA_MESSAGING_RS_DEPLOY_TOKEN" "$CI_SERVER_HOST" "$SNODRA_MESSAGING_RS_SSH_URL")
+      export SNODRA_GITCONFIG
+      docker build --secret id=gitconfig,env=SNODRA_GITCONFIG -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+      unset SNODRA_GITCONFIG
       if ! git rev-parse "$NEXT" >/dev/null 2>&1; then
-        git config user.name "kraken-org CI"
+        git config user.name "snodra CI"
         git config user.email "ci@damoreira.ml"
         git tag -a "$NEXT" -m "$CI_PROJECT_NAME $NEXT"
         git push "$CI_REPOSITORY_URL" "$NEXT"

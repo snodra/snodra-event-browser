@@ -1,7 +1,7 @@
-//! A real hub for the tests: a `kraken-hub` container from the hub's image (`KRAKEN_HUB_IMAGE`,
-//! default `kraken-hub:modular`), configured by its `KRAKEN_HUB_*` variables, with its gRPC and
-//! HTTP ports mapped on the loopback. This repository depends on the hub's image, never on its
-//! source.
+//! A real server for the tests: a `snodra-server` container from the server's image
+//! (`SNODRA_SERVER_IMAGE`, default `snodra-server:dev`), configured by its `SNODRA_SERVER_*`
+//! variables, with its gRPC and HTTP ports mapped on the loopback. This repository depends on the
+//! server's image, never on its source.
 //! Needs Docker.
 
 #![allow(dead_code)]
@@ -16,9 +16,9 @@ use testcontainers::{ContainerAsync, GenericImage, ImageExt};
 const GRPC: u16 = 7000;
 const HTTP: u16 = 7001;
 
-/// The hub image the tests run: `KRAKEN_HUB_IMAGE`, default `kraken-hub:modular`.
+/// The server image the tests run: `SNODRA_SERVER_IMAGE`, default `snodra-server:dev`.
 pub fn image() -> String {
-    std::env::var("KRAKEN_HUB_IMAGE").unwrap_or_else(|_| "kraken-hub:modular".into())
+    std::env::var("SNODRA_SERVER_IMAGE").unwrap_or_else(|_| "snodra-server:dev".into())
 }
 
 pub struct Hub {
@@ -51,7 +51,7 @@ pub async fn hub_with(env: &[(&str, &str)], files: &[(&str, &str)]) -> Hub {
         .with_exposed_port(HTTP.tcp())
         .with_wait_for(WaitFor::message_on_stdout("http listening"))
         .with_wait_for(WaitFor::message_on_stdout("hub listening"))
-        .with_env_var("KRAKEN_HUB_OTLP_ENDPOINT", "");
+        .with_env_var("SNODRA_SERVER_OTLP_ENDPOINT", "");
     for (key, value) in env {
         request = request.with_env_var(*key, *value);
     }

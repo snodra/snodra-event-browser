@@ -1,5 +1,5 @@
 //! End to end on Docker: a Kafka container, a hub container (the hub's image, see
-//! `hub_container`), and the browser in process on the Kafka add-on, as `kraken-event-browser`
+//! `hub_container`), and the browser in process on the Kafka add-on, as `snodra-event-browser`
 //! runs it (`run`, settings from variables). Events are published with the add-on; everything is
 //! read through the hub's HTTP API: search (filters, paging), a record with and without its
 //! payload under the hub's payload rules, the sources, the lag of a subscription without a live
@@ -13,15 +13,15 @@ use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use futures::StreamExt;
-use kraken_event_browser::Settings;
-use kraken_messaging::event_store::{
-    EventStore, OutgoingEvent, SubscriptionEvent, SubscriptionSpec,
-};
-use kraken_messaging_kafka::{KafkaConfig, KafkaEventStore};
 use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
 use rdkafka::client::DefaultClientContext;
 use rdkafka::config::ClientConfig;
 use serde_json::Value;
+use snodra_event_browser::Settings;
+use snodra_messaging::event_store::{
+    EventStore, OutgoingEvent, SubscriptionEvent, SubscriptionSpec,
+};
+use snodra_messaging_kafka::{KafkaConfig, KafkaEventStore};
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::kafka::apache::{self, Kafka};
 use tokio::sync::oneshot;
@@ -72,10 +72,10 @@ async fn hub() -> hub_container::Hub {
     hub_container::hub_with(
         &[
             // Reads are open; a payload is served to a request presenting the write token.
-            ("KRAKEN_HUB_DASHBOARD_WRITE_TOKEN", TOKEN),
-            ("KRAKEN_HUB_EVENT_BROWSER_PAYLOADS", "true"),
+            ("SNODRA_SERVER_DASHBOARD_WRITE_TOKEN", TOKEN),
+            ("SNODRA_SERVER_EVENT_BROWSER_PAYLOADS", "true"),
             // Tails end on time within the test: the hub asks 2 s under this.
-            ("KRAKEN_HUB_MAX_STREAM_DURATION", "6s"),
+            ("SNODRA_SERVER_MAX_STREAM_DURATION", "6s"),
         ],
         &[],
     )
@@ -222,22 +222,22 @@ async fn the_dashboard_reads_kafka_through_the_hub_and_the_browser() {
     let hub = hub().await;
     let (grpc, http) = (hub.grpc, hub.http);
     let vars: BTreeMap<String, String> = [
-        ("KRAKEN_KAFKA_BOOTSTRAP", bootstrap.as_str()),
-        ("KRAKEN_EVENT_BROWSER_MAX_TAILS", "1"),
-        ("KRAKEN_EVENT_BROWSER_LAG_INTERVAL_MS", "1000"),
+        ("SNODRA_KAFKA_BOOTSTRAP", bootstrap.as_str()),
+        ("SNODRA_EVENT_BROWSER_MAX_TAILS", "1"),
+        ("SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS", "1000"),
         // The lag metric runs only with an endpoint (nothing is exported in the test: no meter
         // provider is installed).
-        ("KRAKEN_OTLP_ENDPOINT", "http://127.0.0.1:1"),
-        ("KRAKEN_EVENT_BROWSER_HEALTH_LISTEN", "off"),
+        ("SNODRA_OTLP_ENDPOINT", "http://127.0.0.1:1"),
+        ("SNODRA_EVENT_BROWSER_HEALTH_LISTEN", "off"),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))
     .collect();
     let settings = Settings::from_vars(&vars).unwrap();
     let config =
-        kraken_messaging::Config::new(kraken_event_browser::SERVICE, &format!("static://{grpc}"));
+        snodra_messaging::Config::new(snodra_event_browser::SERVICE, &format!("static://{grpc}"));
     let (stop, stopped) = oneshot::channel::<()>();
-    let browser = tokio::spawn(kraken_event_browser::run(config, settings, async {
+    let browser = tokio::spawn(snodra_event_browser::run(config, settings, async {
         let _ = stopped.await;
     }));
     until(http, "/api/v1/version", "the browser installed", |_, v| {

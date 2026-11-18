@@ -1,4 +1,4 @@
-//! The open tails: each one the event store's tail stream as it is, fitted to the hub's part
+//! The open tails: each one the event store's tail stream as it is, fitted to the server's part
 //! bound, that ends with `shutdown` when the browser stops ([`Tails::end_all`]), after its
 //! `start` and before the hub connection closes. A tail whose request the hub cancelled is
 //! dropped by the library, which drops the event store's stream and frees its slot.
@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use futures::stream::BoxStream;
-use kraken_messaging::event_store::browse::{EndReason, TailEnd, TailEvent, TailStream};
+use snodra_messaging::event_store::browse::{EndReason, TailEnd, TailEvent, TailStream};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
@@ -121,7 +121,7 @@ impl Tails {
 
 #[cfg(test)]
 mod tests {
-    use kraken_messaging::event_store::browse::{Heartbeat, TailStart, tail_channel};
+    use snodra_messaging::event_store::browse::{Heartbeat, TailStart, tail_channel};
 
     use super::*;
 

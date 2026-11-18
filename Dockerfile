@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
-# kraken-event-browser (ADR 0027), from the repository root. The builder fetches kraken-messaging-rs,
+# snodra-event-browser (ADR 0027), from the repository root. The builder fetches snodra-messaging-rs,
 # a git dependency named by its ssh URL (Cargo.toml), with the git CLI; the credentials reach only
 # the RUN that fetches, never a layer. Either
-#   docker buildx build --ssh default -t kraken-event-browser .
+#   docker buildx build --ssh default -t snodra-event-browser .
 # with an ssh agent holding a key that can read the repository, or (CI) a git configuration as the
 # secret `gitconfig` whose url.<https URL with a deploy token>.insteadOf rewrites the ssh URL:
-#   docker buildx build --secret id=gitconfig,env=KRAKEN_GITCONFIG -t kraken-event-browser .
+#   docker buildx build --secret id=gitconfig,env=SNODRA_GITCONFIG -t snodra-event-browser .
 FROM rust:1.99-bookworm AS builder
 # cmake: librdkafka is built from source (the Kafka add-on's rdkafka `cmake-build`), with zlib
 # and zstd linked in, so the distroless runtime needs no extra library.
@@ -20,14 +20,14 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
 RUN --mount=type=ssh \
     --mount=type=secret,id=gitconfig,target=/root/.gitconfig \
-    cargo build --release --locked --bin kraken-event-browser
+    cargo build --release --locked --bin snodra-event-browser
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 WORKDIR /app
-COPY --from=builder /app/target/release/kraken-event-browser /app/kraken-event-browser
-ENV KRAKEN_EVENT_BROWSER_HEALTH_LISTEN=0.0.0.0:7010
+COPY --from=builder /app/target/release/snodra-event-browser /app/snodra-event-browser
+ENV SNODRA_EVENT_BROWSER_HEALTH_LISTEN=0.0.0.0:7010
 EXPOSE 7010
 USER nonroot
 # Distroless has no shell or curl: the binary probes its own gRPC health service.
-HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["/app/kraken-event-browser", "--health-check"]
-ENTRYPOINT ["/app/kraken-event-browser"]
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD ["/app/snodra-event-browser", "--health-check"]
+ENTRYPOINT ["/app/snodra-event-browser"]
