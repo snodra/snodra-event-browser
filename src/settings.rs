@@ -15,6 +15,8 @@ use crate::store::StoreSettings;
 /// The service name the browser registers with (the server's ACL entry names it).
 pub const SERVICE: &str = "snodra-event-browser";
 
+/// The event source the browser reads when `SNODRA_EVENT_BROWSER_SOURCES` is unset.
+pub const DEFAULT_SOURCE: &str = "snodra.events";
 /// The largest payload a record answer carries (`SNODRA_EVENT_BROWSER_MAX_PAYLOAD_BYTES` at
 /// most): JSON-escaped or base64, it still fits the server's answer bound (2 MiB).
 pub const MAX_PAYLOAD_BYTES: usize = 1024 * 1024;
@@ -87,7 +89,7 @@ impl Settings {
         };
         let defaults = BrowseSettings::default();
         let sources = match get("SNODRA_EVENT_BROWSER_SOURCES") {
-            None => defaults.sources.clone(),
+            None => vec![DEFAULT_SOURCE.to_string()],
             Some(list) => list.split(',').map(|s| s.trim().to_string()).collect(),
         };
         if let Some(long) = sources.iter().find(|s| s.len() > MAX_SOURCE) {
@@ -216,7 +218,13 @@ mod tests {
     #[test]
     fn defaults_are_adr_0025s_bounds_on_the_default_source() {
         let s = settings(&[]).unwrap();
-        assert_eq!(s.browse, BrowseSettings::default());
+        assert_eq!(
+            s.browse,
+            BrowseSettings {
+                sources: vec![DEFAULT_SOURCE.into()],
+                ..BrowseSettings::default()
+            }
+        );
         assert_eq!(s.lag_interval, Some(Duration::from_secs(30)));
         assert_eq!(s.health_listen, Some("0.0.0.0:7010".parse().unwrap()));
         assert_eq!(s.otlp_endpoint, None);
@@ -232,7 +240,7 @@ mod tests {
         let s = settings(&[
             (
                 "SNODRA_EVENT_BROWSER_SOURCES",
-                " kraken.events , kraken.events.dlt ",
+                " snodra.events , snodra.events.dlt ",
             ),
             ("SNODRA_EVENT_BROWSER_MAX_SCANNED", "1000"),
             ("SNODRA_EVENT_BROWSER_MAX_RESULTS", "20"),
@@ -250,7 +258,7 @@ mod tests {
         assert_eq!(
             s.browse,
             BrowseSettings {
-                sources: vec!["kraken.events".into(), "kraken.events.dlt".into()],
+                sources: vec!["snodra.events".into(), "snodra.events.dlt".into()],
                 max_scanned: 1000,
                 max_results: 20,
                 timeout: Duration::from_millis(2500),

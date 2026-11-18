@@ -17,28 +17,12 @@ variables:
   CARGO_TERM_COLOR: always
   TESTCONTAINERS_RYUK_DISABLED: "true"
 
-# snodra-messaging-rs, a git dependency, is named by its ssh URL (works on a developer machine with
-# ssh access). On the runner cargo fetches it with the git CLI over https with the deploy token
-# SNODRA_MESSAGING_RS_DEPLOY_USER / _TOKEN: the URL rewrite lives in the job's environment only
-# (GIT_CONFIG_COUNT, git 2.31+), so nothing is written to the shell runner's git configuration and
-# no command line shows the token.
-.snodra-messaging-rs-fetch:
-  variables:
-    CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-    SNODRA_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git"
-  before_script:
-    - export GIT_CONFIG_COUNT=1
-    - export GIT_CONFIG_KEY_0="url.https://${SNODRA_MESSAGING_RS_DEPLOY_USER}:${SNODRA_MESSAGING_RS_DEPLOY_TOKEN}@${CI_SERVER_HOST}/snodra/snodra-messaging-rs.git.insteadOf"
-    - export GIT_CONFIG_VALUE_0="$SNODRA_MESSAGING_RS_SSH_URL"
-
 fmt:
-  extends: .snodra-messaging-rs-fetch
   stage: check
   script:
     - cargo fmt --all -- --check
 
 clippy:
-  extends: .snodra-messaging-rs-fetch
   stage: check
   script:
     - cargo clippy --all-targets --all-features -- -D warnings
@@ -47,10 +31,8 @@ clippy:
 # the hub's release maintains), pulled from Harbor first; the end-to-end test adds the event
 # store's container.
 test:
-  extends: .snodra-messaging-rs-fetch
   stage: test
   before_script:
-    - !reference [.snodra-messaging-rs-fetch, before_script]
     - echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin "$HARBOR_HOST"
     - docker pull "$SNODRA_SERVER_IMAGE"
   script:
@@ -65,7 +47,6 @@ release:
     GIT_DEPTH: "0"
     DOCKER_BUILDKIT: "1"
     IMAGE_NAME: snodra-event-browser
-    SNODRA_MESSAGING_RS_SSH_URL: "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git"
   before_script:
     - git fetch --tags --force
   script:
@@ -121,15 +102,9 @@ release:
         exit 0
       fi
       IMAGE="$HARBOR_HOST/$HARBOR_PROJECT/$IMAGE_NAME"
-      # The image is built before anything is published: a failed build (it fetches
-      # snodra-messaging-rs with the deploy token) stops the release with no tag and no image.
-      # The builder reads a git configuration as the BuildKit secret `gitconfig` (never a layer)
-      # that rewrites the library's ssh URL to https with the deploy token.
-      SNODRA_GITCONFIG=$(printf '[url "https://%s:%s@%s/snodra/snodra-messaging-rs.git"]\n\tinsteadOf = %s\n' \
-        "$SNODRA_MESSAGING_RS_DEPLOY_USER" "$SNODRA_MESSAGING_RS_DEPLOY_TOKEN" "$CI_SERVER_HOST" "$SNODRA_MESSAGING_RS_SSH_URL")
-      export SNODRA_GITCONFIG
-      docker build --secret id=gitconfig,env=SNODRA_GITCONFIG -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
-      unset SNODRA_GITCONFIG
+      # The image is built before anything is published: a failed build stops the release with no
+      # tag and no image.
+      docker build -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
       if ! git rev-parse "$NEXT" >/dev/null 2>&1; then
         git config user.name "snodra CI"
         git config user.email "ci@damoreira.ml"

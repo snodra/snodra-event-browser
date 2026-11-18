@@ -241,7 +241,7 @@ mod tests {
 
     fn record(payload: Option<Option<String>>, base64: Option<String>) -> EventRecord {
         EventRecord {
-            summary: worst_summary("kraken.events"),
+            summary: worst_summary("snodra.events"),
             all_headers: (0..MAX_HEADERS)
                 .map(|i| HeaderView {
                     name: format!("{i}{}", "\u{1}".repeat(MAX_HEADER_NAME - 3)),
@@ -328,7 +328,7 @@ mod tests {
     fn a_lag_view_drops_the_least_lagging_subscriptions_to_fit() {
         // 500 subscriptions of 1000 segments: some 40 MB.
         let view = LagView {
-            source: "kraken.events".into(),
+            source: "snodra.events".into(),
             missing: false,
             subscriptions: (0..500)
                 .map(|i| subscription(&format!("s-{i:03}"), 1_000_000 - i, 1000))
@@ -345,7 +345,7 @@ mod tests {
         assert!(lags.windows(2).all(|w| w[0] >= w[1]));
         // A view that fits is unchanged.
         let small = LagView {
-            source: "kraken.events".into(),
+            source: "snodra.events".into(),
             missing: false,
             subscriptions: vec![subscription("a", 3, 2)],
             truncated: false,

@@ -157,7 +157,7 @@ impl Sse {
 
 const ROUTES: [&str; 5] = [
     "/api/v1/events",
-    "/api/v1/events/kraken.events/0/1",
+    "/api/v1/events/snodra.events/0/1",
     "/api/v1/events/sources",
     "/api/v1/events/lag",
     "/api/v1/events/tail",
@@ -170,7 +170,7 @@ async fn the_hubs_events_api_answers_through_the_browser_until_it_stops() {
         Double::new(4).with_events((0..5).map(|i| summary(i, "orders.Placed", 0)).collect());
     double.state.lock().unwrap().lag = Some(
         serde_json::from_value::<LagView>(serde_json::json!({
-            "source": "kraken.events",
+            "source": "snodra.events",
             "subscriptions": [{"subscription": "orders.projector", "state": "Empty", "members": 0,
                 "segments": [{"segment": "0", "committed": "2", "head": "5", "lag": 3}], "lag": 3}],
             "truncated": false
@@ -196,19 +196,19 @@ async fn the_hubs_events_api_answers_through_the_browser_until_it_stops() {
     )
     .await;
     assert_eq!(next["results"][0]["position"], "2");
-    let (status, record) = get(hub.http, "/api/v1/events/kraken.events/0/1").await;
+    let (status, record) = get(hub.http, "/api/v1/events/snodra.events/0/1").await;
     assert_eq!(status, 200, "{record}");
     assert_eq!(record["payload"]["hidden"], "payloads-off");
     let (status, sources) = get(hub.http, "/api/v1/events/sources").await;
     assert_eq!(
         (status, &sources["sources"][0]["source"]),
-        (200, &Value::from("kraken.events"))
+        (200, &Value::from("snodra.events"))
     );
     let (status, lag) = get(hub.http, "/api/v1/events/lag").await;
     assert_eq!(status, 200);
     assert_eq!(lag["subscriptions"][0]["subscription"], "orders.projector");
     assert_eq!(lag["subscriptions"][0]["lag"], 3);
-    let (status, missing) = get(hub.http, "/api/v1/events/kraken.events/0/99").await;
+    let (status, missing) = get(hub.http, "/api/v1/events/snodra.events/0/99").await;
     assert_eq!(
         (status, missing["error"].as_str()),
         (404, Some("no event there"))
