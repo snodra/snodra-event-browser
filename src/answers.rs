@@ -1,4 +1,4 @@
-//! Size discipline towards the hub: the hub reads a point answer of at most [`MAX_ANSWER`]
+//! Size discipline towards the server: the server reads a point answer of at most [`MAX_ANSWER`]
 //! bytes and a tail part of at most [`MAX_PART`] (more is a 502, and over the gRPC transport's
 //! 4 MiB the browser's whole session drops). Every answer is fitted here, whatever the settings:
 //!
@@ -17,11 +17,11 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 
-use kraken_messaging::event_store::browse::{
+use serde::Serialize;
+use snodra_messaging::event_store::browse::{
     BrowseError, EventBrowser, EventRecord, LagView, MAX_CURSOR, SearchPage, SearchRequest,
     TailEvent,
 };
-use serde::Serialize;
 
 /// The longest point answer the hub reads (its `MAX_ANSWER`).
 pub const MAX_ANSWER: usize = 2 * 1024 * 1024;
@@ -199,8 +199,8 @@ pub fn fit_part(part: TailEvent) -> Option<TailEvent> {
         if size > MAX_PART {
             tracing::warn!(
                 size,
-                segment = %kraken_messaging::event_store::browse::quoted(&summary.segment),
-                position = %kraken_messaging::event_store::browse::quoted(&summary.position),
+                segment = %snodra_messaging::event_store::browse::quoted(&summary.segment),
+                position = %snodra_messaging::event_store::browse::quoted(&summary.position),
                 "a tail record is larger than the hub takes: dropped"
             );
             return None;
@@ -213,7 +213,7 @@ pub fn fit_part(part: TailEvent) -> Option<TailEvent> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use kraken_messaging::event_store::browse::{
+    use snodra_messaging::event_store::browse::{
         EventSummary, HeaderView, MAX_HEADER_NAME, MAX_HEADER_VALUE, MAX_HEADERS, MAX_KEY,
         MAX_SUMMARY_HEADER, SegmentLag, SubscriptionLag,
     };
@@ -231,7 +231,7 @@ mod tests {
             timestamp: Some(i64::MIN),
             key: Some(control(MAX_KEY)),
             key_truncated: true,
-            headers: kraken_messaging::event_store::headers::ALL
+            headers: snodra_messaging::event_store::headers::ALL
                 .iter()
                 .map(|h| (h.to_string(), control(MAX_SUMMARY_HEADER)))
                 .collect::<BTreeMap<_, _>>(),

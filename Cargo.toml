@@ -1,27 +1,25 @@
 [package]
-name = "kraken-event-browser"
+name = "snodra-event-browser"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
-description = "The hub's event browser add-on: answers kraken.events.* queries from the event store (ADR 0027)"
-license = "MIT"
+description = "Snodra Server's event browser add-on: answers snodra.events.* queries from the event store (ADR 0027)"
+license = "Apache-2.0"
 publish = false
 
 [workspace]
 
 [lib]
-name = "kraken_event_browser"
+name = "snodra_event_browser"
 
 [[bin]]
-name = "kraken-event-browser"
+name = "snodra-event-browser"
 path = "src/main.rs"
 
 [dependencies]
-# kraken-messaging-rs by git, pinned to its release tag. The ssh URL works on a developer machine
-# with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a deploy token
-# (see the README, "The library dependency").
-kraken-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.1" }
-kraken-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/kraken-org/kraken-messaging-rs.git", tag = "v0.5.1" }
+# The libraries come from crates.io, at the minor this release is built against.
+snodra-messaging-rs = "0.6"
+snodra-messaging-kafka = "0.6"
 # The Kafka add-on builds librdkafka from source with zstd; the image also links zlib statically
 # (as the hub's image did while it read Kafka), so the distroless runtime needs no extra library.
 rdkafka = { version = "0.39.0", features = ["cmake-build", "libz-static", "zstd"] }
@@ -43,7 +41,7 @@ tonic-health = "0.14.8"
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["full", "test-util"] }
 opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["metrics", "testing"] }
-# The tests run the hub from its image (KRAKEN_HUB_IMAGE) and the event store in containers.
+# The tests run the hub from its image (SNODRA_SERVER_IMAGE) and the event store in containers.
 testcontainers = "0.27"
 testcontainers-modules = { version = "0.15.0", features = ["kafka"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["stream"] }

@@ -1,11 +1,11 @@
-//! `kraken-event-browser`: the hub's event browser add-on (ADR 0027). It connects to every hub
-//! like any service (the library's hub client, service `kraken-event-browser`), handles the
-//! reserved query types `kraken.events.Search`, `Get`, `Sources`, `Lag` (point queries) and
+//! `snodra-event-browser`: Snodra Server's event browser add-on (ADR 0027). It connects to every
+//! server like any service (the library's hub client, service `snodra-event-browser`), handles the
+//! reserved query types `snodra.events.Search`, `Get`, `Sources`, `Lag` (point queries) and
 //! `Tail` (a streaming query), and answers them from the browser of the event store add-on
-//! chosen by `KRAKEN_EVENT_STORE` (an [`EventBrowser`] opened alone, without the rest of the
-//! store: [`store`]). The hub keeps the dashboard, the payload rules and the
-//! audit; the browser keeps the bounds of the reads ([`settings`]), fits every answer to what the
-//! hub takes ([`answers`]), ends its tails with `shutdown` when it stops ([`tails`]) and exports
+//! chosen by `SNODRA_EVENT_STORE` (an [`EventBrowser`] opened alone, without the rest of the
+//! store: [`store`]). The server keeps the dashboard, the payload rules and the audit; the
+//! browser keeps the bounds of the reads ([`settings`]), fits every answer to what the server
+//! takes ([`answers`]), ends its tails with `shutdown` when it stops ([`tails`]) and exports
 //! the subscriptions' lag ([`lag`]).
 
 use std::future::Future;
@@ -15,11 +15,11 @@ use std::time::Duration;
 
 use futures::stream::BoxStream;
 use futures::{FutureExt, StreamExt};
-use kraken_messaging::event_store::browse::{
+use snodra_messaging::event_store::browse::{
     BrowseError, EventBrowser, EventRecord, GetRequest, LagRequest, LagView, SearchPage,
     SearchRequest, SourcesRequest, SourcesView, TailEvent, TailRequest,
 };
-use kraken_messaging::{Config, KrakenMessaging, MessageContext, MessagingError};
+use snodra_messaging::{Config, MessageContext, MessagingError, SnodraMessaging};
 use tokio_util::sync::CancellationToken;
 
 pub mod answers;
@@ -44,7 +44,7 @@ const MAX_LOGGED: usize = 128;
 #[derive(Clone)]
 pub struct Handlers {
     browser: Arc<dyn EventBrowser>,
-    /// A search's time budget when the request names none (`KRAKEN_EVENT_BROWSER_TIMEOUT_MS`).
+    /// A search's time budget when the request names none (`SNODRA_EVENT_BROWSER_TIMEOUT_MS`).
     timeout: Duration,
     tails: Tails,
 }
@@ -172,7 +172,7 @@ pub async fn serve(
     for name in &settings.unknown {
         tracing::warn!(
             variable = %clip(name),
-            "unknown KRAKEN_EVENT_BROWSER_* variable: not read"
+            "unknown SNODRA_EVENT_BROWSER_* variable: not read"
         );
     }
     let tails = Tails::new();
@@ -190,7 +190,7 @@ pub async fn serve(
         handlers,
     );
     let started = async {
-        KrakenMessaging::builder(config)
+        SnodraMessaging::builder(config)
             .await?
             .query::<SearchRequest, _, _>(move |request, ctx| {
                 let h = search.clone();
@@ -234,9 +234,9 @@ pub async fn serve(
     );
     let mut tasks = Vec::new();
     match (settings.lag_interval, &settings.otlp_endpoint) {
-        (None, _) => tracing::info!("lag metric off (KRAKEN_EVENT_BROWSER_LAG_INTERVAL_MS=0)"),
+        (None, _) => tracing::info!("lag metric off (SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS=0)"),
         (Some(_), None) => tracing::info!(
-            "lag metric off: no KRAKEN_OTLP_ENDPOINT to export it to (no second event store connection, no periodic listing)"
+            "lag metric off: no SNODRA_OTLP_ENDPOINT to export it to (no second event store connection, no periodic listing)"
         ),
         (Some(_), Some(_)) => {}
     }
@@ -355,18 +355,18 @@ mod tests {
     /// Without an endpoint nothing reads the lag gauge: no second event store connection.
     #[test]
     fn the_lag_metric_has_its_own_browser_only_when_metrics_are_exported() {
-        let off = Browsers::open(&settings(&[("KRAKEN_KAFKA_BOOTSTRAP", "127.0.0.1:1")])).unwrap();
+        let off = Browsers::open(&settings(&[("SNODRA_KAFKA_BOOTSTRAP", "127.0.0.1:1")])).unwrap();
         assert!(off.lag.is_none());
         let on = Browsers::open(&settings(&[
-            ("KRAKEN_KAFKA_BOOTSTRAP", "127.0.0.1:1"),
-            ("KRAKEN_OTLP_ENDPOINT", "http://127.0.0.1:4317"),
+            ("SNODRA_KAFKA_BOOTSTRAP", "127.0.0.1:1"),
+            ("SNODRA_OTLP_ENDPOINT", "http://127.0.0.1:4317"),
         ]))
         .unwrap();
         assert!(on.lag.is_some());
         let zero = Browsers::open(&settings(&[
-            ("KRAKEN_KAFKA_BOOTSTRAP", "127.0.0.1:1"),
-            ("KRAKEN_OTLP_ENDPOINT", "http://127.0.0.1:4317"),
-            ("KRAKEN_EVENT_BROWSER_LAG_INTERVAL_MS", "0"),
+            ("SNODRA_KAFKA_BOOTSTRAP", "127.0.0.1:1"),
+            ("SNODRA_OTLP_ENDPOINT", "http://127.0.0.1:4317"),
+            ("SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS", "0"),
         ]))
         .unwrap();
         assert!(zero.lag.is_none());

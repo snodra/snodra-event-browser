@@ -1,28 +1,28 @@
-//! The lag metric (ADR 0027): every `KRAKEN_EVENT_BROWSER_LAG_INTERVAL_MS` the lag of every
+//! The lag metric (ADR 0027): every `SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS` the lag of every
 //! subscription of every source, live instance or not, read through a browser of its own (one
 //! read at a time: it never takes a slot of the dashboard's calls), exported as the gauge
-//! `kraken_event_browser_subscription_lag{subscription, source}`.
+//! `snodra_event_browser_subscription_lag{subscription, source}`.
 //!
 //! Cardinality: at most [`MAX_SUBSCRIPTIONS`] series per source, the event store's own bound of a
 //! lag listing. A listing that comes back `truncated` (more subscriptions than that, or out of
 //! time: it does not say which; logged once per source) updates the subscriptions it reached and
 //! keeps the last values of the others; a subscription leaves the gauge when a complete listing
 //! lacks it. A refresh that fails keeps the last values and counts
-//! `kraken_event_browser_lag_refreshes_total{outcome}`.
+//! `snodra_event_browser_lag_refreshes_total{outcome}`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use kraken_messaging::event_store::browse::{EventBrowser, LagRequest};
 use opentelemetry::KeyValue;
 use opentelemetry::metrics::{Counter, Meter, ObservableGauge};
+use snodra_messaging::event_store::browse::{EventBrowser, LagRequest};
 use tokio_util::sync::CancellationToken;
 
 /// The gauge's name.
-pub const LAG_GAUGE: &str = "kraken_event_browser_subscription_lag";
+pub const LAG_GAUGE: &str = "snodra_event_browser_subscription_lag";
 /// The refresh counter's name.
-pub const REFRESHES: &str = "kraken_event_browser_lag_refreshes_total";
+pub const REFRESHES: &str = "snodra_event_browser_lag_refreshes_total";
 /// Series per source at most (the event store's bound on a lag listing).
 pub const MAX_SUBSCRIPTIONS: usize = 500;
 
