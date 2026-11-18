@@ -17,11 +17,9 @@ name = "snodra-event-browser"
 path = "src/main.rs"
 
 [dependencies]
-# snodra-messaging-rs by git, pinned to its release tag. The ssh URL works on a developer machine
-# with ssh access (CARGO_NET_GIT_FETCH_WITH_CLI=true); CI rewrites it to https with a deploy token
-# (see the README, "The library dependency").
-snodra-messaging-rs = { git = "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git", tag = "v0.6.0" }
-snodra-messaging-kafka = { git = "ssh://git@local.gitlab.damoreira.ml/snodra/snodra-messaging-rs.git", tag = "v0.6.0" }
+# The libraries come from crates.io, at the minor this release is built against.
+snodra-messaging-rs = "0.6"
+snodra-messaging-kafka = "0.6"
 # The Kafka add-on builds librdkafka from source with zstd; the image also links zlib statically
 # (as the hub's image did while it read Kafka), so the distroless runtime needs no extra library.
 rdkafka = { version = "0.39.0", features = ["cmake-build", "libz-static", "zstd"] }
