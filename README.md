@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Snodra mascot" src="docs/assets/brand/svg/snodra.svg" width="160">
+  <img alt="Snodra Event Browser mascot" src="docs/assets/brand/svg/snodra-event-browser.svg" width="160">
 </p>
 
 <h1 align="center">Snodra Event Browser</h1>
