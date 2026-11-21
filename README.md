@@ -29,11 +29,11 @@ store it reads.
 The dashboard's Events page appears as soon as one browser is registered, and disappears when it is
 gone. The browser only reads; it never writes to the event store.
 
-- **Sources**: every topic or stream the event store holds, with lag.
+- **Sources**: every Kafka topic the event store holds, with lag.
 - **Search**: newest first across every segment of a source, paged by cursor.
 - **Record**: one event with its headers, and its payload when the caller's token allows it.
 - **Tail**: a streaming query that follows new records live.
-- **One store per browser**: Kafka, or RabbitMQ Streams. Several browsers can serve several servers.
+- **One store per browser**: Kafka is the only event store this browser reads today (`SNODRA_EVENT_STORE=kafka`, the default). Several browsers can serve several servers.
 
 ## Run it
 

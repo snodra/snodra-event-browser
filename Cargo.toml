@@ -3,7 +3,7 @@ name = "snodra-event-browser"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
-description = "Snodra Server's event browser add-on: answers snodra.events.* queries from the event store (ADR 0027)"
+description = "Snodra Server's event browser add-on: answers snodra.events.* queries from the event store"
 license = "Apache-2.0"
 publish = false
 
@@ -30,7 +30,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-# Metrics (ADR 0026): pushed over OTLP like the hub's and the services'.
+# Metrics: pushed over OTLP like the hub's and the services'.
 opentelemetry = { version = "0.33.1", default-features = false, features = ["metrics"] }
 opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["metrics", "rt-tokio"] }
 opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["grpc-tonic", "metrics"] }

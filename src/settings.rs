@@ -1,5 +1,5 @@
 //! The browser's own settings, from the environment: which event store it reads, the bounds of
-//! ADR 0025 (mapped onto the library's [`BrowseSettings`]), the lag metric's period, the health
+//! the reads (mapped onto the library's [`BrowseSettings`]), the lag metric's period, the health
 //! listener and the OTLP endpoint. The hub connection is the library's [`snodra_messaging::Config`]
 //! (`SNODRA_SERVER_ADDRESS`, credentials, TLS), the event store's connection its add-on's settings
 //! ([`crate::store`]). Every value is checked at startup; a mistake names the variable.

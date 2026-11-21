@@ -1,4 +1,4 @@
-//! `snodra-event-browser`: Snodra Server's event browser add-on (ADR 0027). It connects to every
+//! `snodra-event-browser`: Snodra Server's event browser add-on. It connects to every
 //! server like any service (the library's hub client, service `snodra-event-browser`), handles the
 //! reserved query types `snodra.events.Search`, `Get`, `Sources`, `Lag` (point queries) and
 //! `Tail` (a streaming query), and answers them from the browser of the event store add-on

@@ -1,4 +1,4 @@
-//! The lag metric (ADR 0027): every `SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS` the lag of every
+//! The lag metric: every `SNODRA_EVENT_BROWSER_LAG_INTERVAL_MS` the lag of every
 //! subscription of every source, live instance or not, read through a browser of its own (one
 //! read at a time: it never takes a slot of the dashboard's calls), exported as the gauge
 //! `snodra_event_browser_subscription_lag{subscription, source}`.
