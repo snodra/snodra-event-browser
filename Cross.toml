@@ -1,0 +1,14 @@
+# `cross` builds run inside its own container, so protoc (needed by the
+# snodra-messaging-rs build script that generates the hub client) is installed there.
+# Native runners get it from `arduino/setup-protoc` in the release workflow instead.
+[target.x86_64-unknown-linux-gnu]
+pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+
+[target.aarch64-unknown-linux-gnu]
+pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+
+[target.x86_64-unknown-linux-musl]
+pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+
+[target.aarch64-unknown-linux-musl]
+pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
