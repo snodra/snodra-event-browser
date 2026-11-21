@@ -1,6 +1,6 @@
 //! Logs and metrics, as the hub and the services do them: JSON lines on stdout filtered by
 //! `RUST_LOG` (default `info`), and metrics pushed over OTLP gRPC to `SNODRA_OTLP_ENDPOINT`
-//! (ADR 0026; every 60 s, `OTEL_METRIC_EXPORT_INTERVAL` changes it). The resource is the
+//! (every 60 s, `OTEL_METRIC_EXPORT_INTERVAL` changes it). The resource is the
 //! identity Prometheus labels the series with: `service.name` `snodra-event-browser` and
 //! `service.instance.id` the instance id the hub sees. Without an endpoint nothing is exported
 //! (the library's metrics and the lag gauge are recorded on a no-op meter).

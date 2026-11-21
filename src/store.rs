@@ -1,5 +1,5 @@
-//! The event store the browser reads, chosen by `SNODRA_EVENT_STORE` (ADR 0027: the browser is
-//! built on the library's event-store add-ons and reads each of them). Only this module knows the
+//! The event store the browser reads, chosen by `SNODRA_EVENT_STORE` (the browser is built on
+//! the library's event-store add-ons and reads each of them). Only this module knows the
 //! add-ons and their settings; everything else sees an [`EventBrowser`].
 //!
 //! - `kafka` (the default, and the only one today): the Kafka add-on's browser alone

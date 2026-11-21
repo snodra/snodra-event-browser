@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# snodra-event-browser (ADR 0027), from the repository root. The builder fetches snodra-messaging-rs,
+# snodra-event-browser, from the repository root. The builder fetches snodra-messaging-rs,
 # a git dependency named by its ssh URL (Cargo.toml), with the git CLI; the credentials reach only
 # the RUN that fetches, never a layer. Either
 #   docker buildx build --ssh default -t snodra-event-browser .
