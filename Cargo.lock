@@ -2897,9 +2897,9 @@ dependencies = [
 
 [[package]]
 name = "snodra-messaging-kafka"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31c0d07f7045a827f5b2c6e90bef8db3afd5bac853a0bec3c8dff9388053864f"
+checksum = "c4bccf1403f28e1383ea60b2dc43f80f29a4e6e212bb47ca29f2139017fa1356"
 dependencies = [
  "futures",
  "rdkafka",
@@ -2912,9 +2912,9 @@ dependencies = [
 
 [[package]]
 name = "snodra-messaging-rs"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a23dadce862197f8146498b18c806184eac78d1579fba341d5a41e693ce032a5"
+checksum = "281bbf93142552d5405538e8c7d9748f1b301f94ae43828e627a710f937af48d"
 dependencies = [
  "base64 0.23.1",
  "chrono",
