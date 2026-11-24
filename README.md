@@ -13,7 +13,7 @@
   <a href="https://github.com/snodra/snodra-event-browser/releases"><img alt="release" src="https://img.shields.io/github/v/release/snodra/snodra-event-browser"></a>
   <a href="https://hub.docker.com/r/snodra/snodra-event-browser"><img alt="docker" src="https://img.shields.io/docker/v/snodra/snodra-event-browser?label=docker"></a>
   <img alt="Rust" src="https://img.shields.io/badge/Rust-1.99.1-000000?logo=rust&logoColor=white">
-  <a href="https://snodra.damoreira.com/"><img alt="docs" src="https://img.shields.io/badge/docs-snodra.damoreira.com-0B5FFF"></a>
+  <a href="https://snodra.damoreira.com/docs/"><img alt="docs" src="https://img.shields.io/badge/docs-snodra.damoreira.com-0B5FFF"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
 </p>
 
@@ -57,8 +57,8 @@ while a browser is registered on that server.
 
 ## Documentation
 
-The routes, the bounds and the payload rules: **<https://snodra.damoreira.com/server/event-browser/>** and
-<https://snodra.damoreira.com/tools/event-browser/>.
+The routes, the bounds and the payload rules: **<https://snodra.damoreira.com/docs/server/event-browser/>** and
+<https://snodra.damoreira.com/docs/tools/event-browser/>.
 
 ## Contributing
 
