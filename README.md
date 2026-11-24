@@ -41,7 +41,7 @@ gone. The browser only reads; it never writes to the event store.
 docker run --rm \
   -e SNODRA_SERVER_ADDRESS=static://snodra-server:7000 \
   -e SNODRA_KAFKA_BOOTSTRAP=kafka:9092 \
-  snodra/snodra-event-browser:0.2.0
+  snodra/snodra-event-browser:0.3.0
 ```
 
 | Setting | What it is |
