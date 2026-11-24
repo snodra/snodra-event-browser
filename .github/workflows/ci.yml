@@ -67,6 +67,7 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # The repository variable SNODRA_SERVER_VERSION, when set, overrides the hub version pinned here.
       - name: the server image the end-to-end tests need
         env:
           SERVER: snodra/snodra-server:${{ vars.SNODRA_SERVER_VERSION || '0.6.0' }}
@@ -98,9 +99,11 @@ jobs:
   # (scripts/next-version.sh): feat -> minor, fix/perf -> patch, anything else -> no release.
   # Below 1.0.0 nothing computes a major; 1.0.0 is declared by hand.
   #
-  # Three jobs: `version` computes the version, `package` checks that the bumped tree builds and
-  # reports that version (it builds third-party code, so it gets no write token), and `push` writes
-  # the same bump, commits, tags and pushes.
+  # `version` computes the version. `package` applies the bump and records its tree. `binaries`
+  # and `image` build every release target and the image from that tree, exactly as the release
+  # will, so nothing is tagged that the release cannot build. None of them has a write token or a
+  # publishing secret. `push` writes the same bump, checks it gives the same tree, commits, tags
+  # and pushes.
   version:
     needs: [fmt, clippy, test, scripts]
     # Pushes to main of this repository only: never a fork or a pull request, and never the
@@ -150,8 +153,8 @@ jobs:
             exit 1
           fi
 
-  # The packaging check: the bumped tree must build, locked, and report the new version before
-  # anything is pushed. The release commit gets no CI run of its own.
+  # The bumped tree, recorded: every later job builds this tree and `push` commits it. The manifest
+  # and the lock must agree (--locked) and carry the version.
   package:
     needs: version
     if: needs.version.outputs.version != ''
@@ -163,17 +166,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master, 2026-11-23
-        with:
-          toolchain: "1.99.1"
-      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          version: "29.3"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: librdkafka build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libsasl2-dev zlib1g-dev libzstd-dev
-
-      # The push job writes the same bump and checks that it gets this tree.
       - name: bump
         id: bump
         env:
@@ -183,23 +175,74 @@ jobs:
           git add -u
           echo "tree=$(git write-tree)" >> "$GITHUB_OUTPUT"
           git diff --cached --stat
-
-      # The manifest and the lock agree (--locked), and the binary reports the version: the image
-      # and the release binaries are built the same way from the tag.
-      - name: the release commit builds and reports its version
+      - name: the manifest and the lock carry the version
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          cargo build --locked --bin snodra-event-browser
-          got=$(target/debug/snodra-event-browser --version)
+          rustup toolchain install --profile minimal --no-self-update
+          cargo metadata --locked --format-version 1 > "$RUNNER_TEMP/metadata.json"
+          jq -e --arg v "$VERSION" \
+            '[.packages[] | select(.name == "snodra-event-browser") | .version] == [$v]' \
+            "$RUNNER_TEMP/metadata.json"
+
+  # Every release target, from the bumped tree (binaries.yml applies the bump and checks the tree).
+  binaries:
+    needs: [version, package]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/binaries.yml
+    with:
+      commit: ${{ github.sha }}
+      version: ${{ needs.version.outputs.version }}
+      bump: true
+      tree: ${{ needs.package.outputs.tree }}
+
+  # The image from the bumped tree, without login or push, and the version its binary reports.
+  # One platform: the release builds the same Dockerfile for arm64 too, and `binaries` builds the
+  # arm64 Linux binaries here.
+  image:
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: the bumped tree
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TREE: ${{ needs.package.outputs.tree }}
+        run: |
+          scripts/bump-version.sh "$VERSION"
+          git add -u
+          if [ "$(git write-tree)" != "$TREE" ]; then
+            echo "::error::the bump differs from the tree the package job checked"
+            exit 1
+          fi
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      # context: . builds the working tree (with the bump), not the commit.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: snodra-event-browser:release-check
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: the image reports the version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          got=$(docker run --rm snodra-event-browser:release-check --version)
           echo "$got"
           if [ "$got" != "snodra-event-browser $VERSION" ]; then
-            echo "::error::the bumped binary reports '$got', not snodra-event-browser $VERSION"
+            echo "::error::the image reports '$got', not snodra-event-browser $VERSION"
             exit 1
           fi
 
   push:
-    needs: [version, package]
+    needs: [version, package, binaries, image]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,0 +1,140 @@
+name: binaries
+
+# The release binaries, one archive per target. This file is the only list of targets.
+# - ci.yml calls it on the release path, before anything is tagged: it applies the bump on top of
+#   the tested commit, checks that it gives the tree the package job checked, and builds.
+# - release.yml calls it with the tag's commit and keeps the archives for the GitHub release.
+# Nothing here can write to the repository or holds a publishing secret.
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: The commit to build
+        required: true
+        type: string
+      version:
+        description: The version the binaries must report, for example 0.3.0
+        required: true
+        type: string
+      bump:
+        description: Apply scripts/bump-version.sh on top of the commit first (the CI release path)
+        type: boolean
+        default: false
+      tree:
+        description: With bump, the tree the bump must give
+        type: string
+        default: ""
+      keep:
+        description: Keep the archives as artifacts of the run
+        type: boolean
+        default: false
+    outputs:
+      targets:
+        description: The targets, separated by spaces
+        value: ${{ jobs.targets.outputs.targets }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Static musl builds for Linux, native builds for macOS and Windows. librdkafka, zlib and zstd
+  # come from source, so no runner needs a system package. `runs`: the runner can execute it.
+  targets:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      - name: the targets
+        id: targets
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ $VERSION =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::the version input is not of the form N.N.N"
+            exit 1
+          fi
+          matrix='[
+            {"target": "x86_64-unknown-linux-musl", "os": "ubuntu-latest", "runs": true},
+            {"target": "aarch64-unknown-linux-musl", "os": "ubuntu-latest", "runs": false},
+            {"target": "x86_64-unknown-linux-gnu", "os": "ubuntu-latest", "runs": true},
+            {"target": "aarch64-unknown-linux-gnu", "os": "ubuntu-latest", "runs": false},
+            {"target": "x86_64-apple-darwin", "os": "macos-latest", "runs": false},
+            {"target": "aarch64-apple-darwin", "os": "macos-latest", "runs": true},
+            {"target": "x86_64-pc-windows-msvc", "os": "windows-latest", "runs": true}
+          ]'
+          echo "matrix=$(jq -c . <<<"$matrix")" >> "$GITHUB_OUTPUT"
+          echo "targets=$(jq -r 'map(.target) | join(" ")' <<<"$matrix")" >> "$GITHUB_OUTPUT"
+
+  binaries:
+    needs: targets
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The same bytes on every runner (Windows would check out CRLF), so the bump and the tree
+      # check work there too.
+      - name: LF line endings
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - name: the bumped tree
+        if: inputs.bump
+        env:
+          VERSION: ${{ inputs.version }}
+          TREE: ${{ inputs.tree }}
+        run: |
+          scripts/bump-version.sh "$VERSION"
+          git add -u
+          if [ "$(git write-tree)" != "$TREE" ]; then
+            echo "::error::the bump differs from the tree the package job checked"
+            exit 1
+          fi
+      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          version: "29.3"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      # dry-run: builds and archives, uploads nothing, and gets no token. The ref only names the
+      # archive (the tag may not exist yet).
+      - name: build
+        id: build
+        uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          bin: snodra-event-browser
+          target: ${{ matrix.target }}
+          archive: snodra-event-browser-$tag-$target
+          include: LICENSE,README.md
+          locked: true
+          dry-run: true
+          dry-run-intended: true
+      - name: the binary reports the version
+        if: matrix.runs
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          bin=target/$TARGET/release/snodra-event-browser
+          [ -f "$bin" ] || bin=$bin.exe
+          got=$("$bin" --version)
+          echo "$got"
+          if [ "$got" != "snodra-event-browser $VERSION" ]; then
+            echo "::error::$bin reports '$got', not snodra-event-browser $VERSION"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: inputs.keep
+        with:
+          name: binary-${{ matrix.target }}
+          path: ${{ steps.build.outputs.zip || steps.build.outputs.tar }}
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30

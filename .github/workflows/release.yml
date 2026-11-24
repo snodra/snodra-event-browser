@@ -5,8 +5,10 @@ name: release
 # for example to finish a release that failed halfway; nobody pushes tags.
 #
 # check (read-only): the tag, its commit, and the version its tree carries.
-# binaries (read-only): one archive per target, built from that commit, kept as run artifacts.
-# image (read-only, the Docker Hub login): builds the image from that commit and pushes it.
+# binaries (read-only, binaries.yml): one archive per target, built from that commit, kept as run
+#   artifacts.
+# image (read-only, the Docker Hub login): once every target built, builds the image from that
+#   commit, pushes it and checks the version it reports.
 # github-release (write, no Docker Hub login): the GitHub release, last, with the archives.
 # No job that can write to the repository builds anything.
 on:
@@ -98,84 +100,23 @@ jobs:
             exit 1
           fi
 
-  # The same binary, without Docker: static musl builds for Linux, native builds for macOS and
-  # Windows. librdkafka, zlib and zstd come from source, so no runner needs a system package.
-  # Each archive is built, checked where the runner can execute it, and kept for github-release;
-  # nothing here can write to the repository.
+  # One archive per target (binaries.yml holds the list), built from the tag's commit, checked
+  # where the runner can execute it, and kept for github-release. Nothing there can write.
   binaries:
     needs: check
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            runs: true
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            runs: true
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            runs: true
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            runs: true
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ needs.check.outputs.commit }}
-          persist-credentials: false
-      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          version: "29.3"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      # dry-run: builds and archives, uploads nothing, and gets no token. The ref only names the
-      # archive.
-      - name: build
-        id: build
-        uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
-        with:
-          ref: refs/tags/${{ env.TAG }}
-          bin: snodra-event-browser
-          target: ${{ matrix.target }}
-          archive: snodra-event-browser-$tag-$target
-          include: LICENSE,README.md
-          locked: true
-          dry-run: true
-          dry-run-intended: true
-      - name: the binary reports the version
-        if: matrix.runs
-        env:
-          VERSION: ${{ needs.check.outputs.version }}
-          TARGET: ${{ matrix.target }}
-        run: |
-          bin=target/$TARGET/release/snodra-event-browser
-          [ -f "$bin" ] || bin=$bin.exe
-          got=$("$bin" --version)
-          echo "$got"
-          if [ "$got" != "snodra-event-browser $VERSION" ]; then
-            echo "::error::$bin reports '$got', not snodra-event-browser $VERSION"
-            exit 1
-          fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: binary-${{ matrix.target }}
-          path: ${{ steps.build.outputs.zip || steps.build.outputs.tar }}
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 7
+    permissions:
+      contents: read
+    uses: ./.github/workflows/binaries.yml
+    with:
+      commit: ${{ needs.check.outputs.commit }}
+      version: ${{ needs.check.outputs.version }}
+      keep: true
 
   # This job must build while it holds the Docker Hub login: the image is built and pushed in one
-  # step. It has no write access to the repository.
+  # step. It has no write access to the repository. It waits for the binaries, so a target that
+  # fails pushes no image.
   image:
-    needs: check
+    needs: [check, binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -204,8 +145,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The image as Docker Hub serves it, on both platforms (arm64 through QEMU). A re-run or a run
+      # by hand overwrites the tags, so this checks what is there now.
+      - name: the pushed image reports the version
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          docker logout docker.io
+          for platform in linux/amd64 linux/arm64; do
+            got=$(docker run --rm --pull always --platform "$platform" "$IMAGE:$VERSION" --version)
+            echo "$platform: $got"
+            if [ "$got" != "snodra-event-browser $VERSION" ]; then
+              echo "::error::$IMAGE:$VERSION on $platform reports '$got', not snodra-event-browser $VERSION"
+              exit 1
+            fi
+          done
+
   # Last, once the image is pushed and every archive is built, so a release that failed halfway is
-  # never shown as done (or as the latest). It is a draft until the archives are attached. It holds
+  # never shown as done (or as the latest). It is a draft until every archive is attached. It holds
   # the write token, builds nothing, checks nothing out and has no Docker Hub login.
   # Safe to repeat: an existing release is edited and the archives are replaced.
   github-release:
@@ -224,8 +181,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LATEST: ${{ needs.check.outputs.latest }}
           VERSION: ${{ needs.check.outputs.version }}
+          TARGETS: ${{ needs.binaries.outputs.targets }}
         run: |
           ls -l archives
+          # One archive per target and nothing else, or no release (an artifact can expire before
+          # a late re-run).
+          [ -n "$TARGETS" ] || { echo "::error::no target list"; exit 1; }
+          count=0
+          for target in $TARGETS; do
+            [[ $target =~ ^[a-z0-9_-]+$ ]] || { echo "::error::not a target name"; exit 1; }
+            n=$(find archives -maxdepth 1 -type f -name "snodra-event-browser-$TAG-$target.*" | wc -l | tr -d " ")
+            if [ "$n" -ne 1 ]; then
+              echo "::error::$n archives for $target, not 1"
+              exit 1
+            fi
+            count=$((count + 1))
+          done
+          total=$(find archives -maxdepth 1 -type f | wc -l | tr -d " ")
+          if [ "$total" -ne "$count" ]; then
+            echo "::error::$total archives for $count targets"
+            exit 1
+          fi
           NOTES="Container image: \`$IMAGE:$VERSION\`
           Binaries: one archive per target below (Linux musl and gnu on amd64/arm64, macOS amd64/arm64, Windows amd64)."
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
