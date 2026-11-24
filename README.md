@@ -64,6 +64,29 @@ The routes, the bounds and the payload rules: **<https://snodra.damoreira.com/se
 
 Branches off `main`, conventional commits, a pull request with a green workflow.
 
+## Releases
+
+Versions are cut by CI from the commit types. Nobody pushes a tag. When the checks pass on a push to
+`main`, the subjects since the last `v*` tag decide. Any `feat` is the next minor. Otherwise any `fix`
+or `perf` is the next patch. Anything else (`docs`, `test`, `chore`, `ci`, `refactor`, `build`,
+`style`) releases nothing.
+
+CI first checks that the new version builds. Then it commits `release: X.Y.Z` (the version in
+`Cargo.toml`, `Cargo.lock` and this README) and tags `vX.Y.Z`. The release workflow builds the binaries
+and pushes the image `snodra/snodra-event-browser:X.Y.Z`. The GitHub release comes last, with the
+binaries attached. Pull before you push: `main` then carries that commit.
+
+- Below 1.0.0, any `type!:` subject and any line starting `BREAKING CHANGE:` in a message count as a
+  minor, never a major. 1.0.0 is declared by hand.
+- A revert (`Revert "feat: ..."`, `revert:`) is not a release reason. The reverted change stays in the
+  last published version until the next `feat`, `fix` or `perf`.
+- Only tags shaped `vN.N.N` count. The highest one reachable from `main` is the last release.
+- `scripts/next-version.sh` holds the rule. `for t in scripts/*.test.sh; do sh "$t"; done` tests it.
+
+If a release fails halfway (the tag exists, some artifacts do not), use **Re-run failed jobs** on that
+run. Every step is safe to repeat. Or run the `release` workflow by hand with the existing tag. **Re-run
+all jobs** on a run that released does nothing, because `main` has moved to its release commit.
+
 ## License
 
 [Apache-2.0](LICENSE) © 2026 Guilherme D'Amoreira.
