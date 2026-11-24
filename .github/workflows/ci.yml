@@ -8,9 +8,17 @@ on:
 permissions:
   contents: read
 
+# A branch keeps only its newest run. On main the runs queue instead: a run that is releasing must
+# finish, and the next one then starts from the tag it pushed. The event is in the group, so a run
+# started by hand (which never releases) cannot replace a push run waiting in the queue.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# bash -eo pipefail: a failing command inside a pipe fails the step.
+defaults:
+  run:
+    shell: bash
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,8 +27,10 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master, 2026-11-23
         with:
           toolchain: "1.99.1"
           components: rustfmt
@@ -29,41 +39,233 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master, 2026-11-23
         with:
           toolchain: "1.99.1"
           components: clippy
-      - uses: arduino/setup-protoc@v3
+      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "29.3"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: librdkafka build dependencies
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libsasl2-dev zlib1g-dev libzstd-dev
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # The hub image first, then log out: nothing built or run below finds the Docker Hub login.
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: the server image the end-to-end tests need
+        env:
+          SERVER: snodra/snodra-server:${{ vars.SNODRA_SERVER_VERSION || '0.6.0' }}
+        run: |
+          docker pull "$SERVER"
+          docker tag "$SERVER" snodra-server:dev
+          docker logout docker.io
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master, 2026-11-23
         with:
           toolchain: "1.99.1"
-      - uses: arduino/setup-protoc@v3
+      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "29.3"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: librdkafka build dependencies
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libsasl2-dev zlib1g-dev libzstd-dev
-      - uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: the server image the end-to-end test needs
-        run: |
-          docker pull "snodra/snodra-server:${{ vars.SNODRA_SERVER_VERSION || '0.6.0' }}"
-          docker tag "snodra/snodra-server:${{ vars.SNODRA_SERVER_VERSION || '0.6.0' }}" snodra-server:dev
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo test --all-features -- --test-threads=1
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: for t in scripts/*.test.sh; do sh "$t" || exit 1; done
+
+  # Versions are cut here, from the Conventional Commit subjects since the last tag
+  # (scripts/next-version.sh): feat -> minor, fix/perf -> patch, anything else -> no release.
+  # Below 1.0.0 nothing computes a major; 1.0.0 is declared by hand.
+  #
+  # Three jobs: `version` computes the version, `package` checks that the bumped tree builds and
+  # reports that version (it builds third-party code, so it gets no write token), and `push` writes
+  # the same bump, commits, tags and pushes.
+  version:
+    needs: [fmt, clippy, test, scripts]
+    # Pushes to main of this repository only: never a fork or a pull request, and never the
+    # release commit itself (a GITHUB_TOKEN push starts no workflow anyway).
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && github.repository_owner == 'snodra'
+      && !startsWith(github.event.head_commit.message, 'release:')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: next version
+        id: next
+        run: |
+          main=$(git ls-remote --exit-code origin refs/heads/main | cut -f1)
+          if [ "$main" != "$GITHUB_SHA" ]; then
+            echo "::notice::main is at $main, not $GITHUB_SHA: a newer push releases it, or this is a re-run of a run that released. Nothing to do. To finish a failed release, re-run its failed jobs or run the release workflow with the tag."
+            exit 0
+          fi
+          last=$(git tag --merged HEAD --list 'v*' | scripts/last-tag.sh)
+          range=${last:+$last..}HEAD
+          version=$(
+            { git log --format=%s "$range"
+              git log -E --grep='^BREAKING[ -]CHANGE:' --format='BREAKING CHANGE: %h' "$range"
+            } | scripts/next-version.sh "$last"
+          )
+          echo "last tag: ${last:-none}; next version: ${version:-none, no release}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # The release pushes the image with these secrets: without them, stop before anything is
+      # tagged. Only whether they are set reaches the shell, never their values.
+      - name: the Docker Hub secrets are set
+        if: steps.next.outputs.version != ''
+        env:
+          HAS_USERNAME: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+          HAS_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+        run: |
+          if [ "$HAS_USERNAME" != true ] || [ "$HAS_TOKEN" != true ]; then
+            echo "::error::the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must both be set, so nothing is tagged"
+            exit 1
+          fi
+
+  # The packaging check: the bumped tree must build, locked, and report the new version before
+  # anything is pushed. The release commit gets no CI run of its own.
+  package:
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+    outputs:
+      tree: ${{ steps.bump.outputs.tree }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master, 2026-11-23
+        with:
+          toolchain: "1.99.1"
+      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          version: "29.3"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: librdkafka build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libsasl2-dev zlib1g-dev libzstd-dev
+
+      # The push job writes the same bump and checks that it gets this tree.
+      - name: bump
+        id: bump
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          scripts/bump-version.sh "$VERSION"
+          git add -u
+          echo "tree=$(git write-tree)" >> "$GITHUB_OUTPUT"
+          git diff --cached --stat
+
+      # The manifest and the lock agree (--locked), and the binary reports the version: the image
+      # and the release binaries are built the same way from the tag.
+      - name: the release commit builds and reports its version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          cargo build --locked --bin snodra-event-browser
+          got=$(target/debug/snodra-event-browser --version)
+          echo "$got"
+          if [ "$got" != "snodra-event-browser $VERSION" ]; then
+            echo "::error::the bumped binary reports '$got', not snodra-event-browser $VERSION"
+            exit 1
+          fi
+
+  push:
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.push.outputs.tag }}
+    # Hooks off for every git command of this job.
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.hooksPath
+      GIT_CONFIG_VALUE_0: /dev/null
+    steps:
+      # Keeps its credentials (in the checkout's git config, never on a command line): this job
+      # pushes. It runs no third-party action after this one and builds nothing.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: commit and tag
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TREE: ${{ needs.package.outputs.tree }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          scripts/bump-version.sh "$VERSION"
+          git add -u
+          if [ "$(git write-tree)" != "$TREE" ]; then
+            echo "::error::the bump differs from the tree the package job checked"
+            exit 1
+          fi
+          git commit -m "release: $VERSION"
+          git tag -a "v$VERSION" -m "${GITHUB_REPOSITORY#*/} v$VERSION"
+
+      - name: push
+        id: push
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          # Both or neither, and only as a fast-forward of the commit this run tested.
+          if ! git push --atomic origin HEAD:refs/heads/main "refs/tags/v$VERSION"; then
+            main=$(git ls-remote --exit-code origin refs/heads/main | cut -f1)
+            if [ "$main" = "$(git rev-parse HEAD)" ]; then
+              # The push landed and only the client saw an error: release it.
+              git ls-remote --exit-code origin "refs/tags/v$VERSION" >/dev/null \
+                || { echo "::error::main has the release commit but not v$VERSION"; exit 1; }
+              echo "::warning::git reported an error, but the release commit and v$VERSION are on the remote"
+            elif [ "$main" != "$GITHUB_SHA" ]; then
+              echo "::notice::main moved during the release; the run for the newer commit releases"
+              exit 0
+            else
+              echo "::error::the push to main was refused: check that github-actions may push to main"
+              exit 1
+            fi
+          fi
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  # A tag pushed with GITHUB_TOKEN starts no workflow, so the release runs here.
+  release:
+    needs: push
+    if: needs.push.outputs.tag != ''
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.push.outputs.tag }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
