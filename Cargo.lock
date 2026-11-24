@@ -2882,8 +2882,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "snodra-messaging",
  "snodra-messaging-kafka",
- "snodra-messaging-rs",
  "testcontainers",
  "testcontainers-modules",
  "tokio",
@@ -2896,25 +2896,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "snodra-messaging-kafka"
-version = "0.7.1"
+name = "snodra-messaging"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4bccf1403f28e1383ea60b2dc43f80f29a4e6e212bb47ca29f2139017fa1356"
-dependencies = [
- "futures",
- "rdkafka",
- "snodra-messaging-rs",
- "tokio",
- "tokio-util",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "snodra-messaging-rs"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "281bbf93142552d5405538e8c7d9748f1b301f94ae43828e627a710f937af48d"
+checksum = "873b6c3c12633bea5d72550897fdcda5b970a5a0a81abc7a54a24067b5ef3422"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -2939,6 +2924,21 @@ dependencies = [
  "tracing",
  "uuid",
  "x509-parser",
+]
+
+[[package]]
+name = "snodra-messaging-kafka"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "747da34506ba236d14f7e28eeed30a3ca8138f60d627576a7ec0af7515fd8213"
+dependencies = [
+ "futures",
+ "rdkafka",
+ "snodra-messaging",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

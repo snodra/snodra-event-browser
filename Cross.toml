@@ -4,7 +4,7 @@
 # (`set -e` does not stop inside an `a && b` list).
 # - protoc 29.3, the version the release workflow installs on its native runners
 #   (arduino/setup-protoc), from the protobuf release and checked against its SHA-256. The images'
-#   own protobuf-compiler is too old for proto3 on Ubuntu 16.04 (2.6.1). The snodra-messaging-rs
+#   own protobuf-compiler is too old for proto3 on Ubuntu 16.04 (2.6.1). The snodra-messaging
 #   build script runs it to generate the hub client.
 # - curl's headers, and only the headers: librdkafka 2.12 includes <curl/curl.h> in rdkafka_conf.c
 #   even when it is built without curl (`#ifdef` on a macro that is always defined, as 0). Nothing

@@ -3,7 +3,7 @@
 FROM rust:1.99-bookworm AS builder
 # cmake: librdkafka is built from source (the Kafka add-on's rdkafka `cmake-build`), with zlib
 # and zstd built from source and linked in, so the distroless runtime needs no extra library.
-# protoc: the snodra-messaging-rs build script generates the hub client.
+# protoc: the snodra-messaging build script generates the hub client.
 RUN apt-get update && apt-get install -y --no-install-recommends cmake protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
