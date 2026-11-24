@@ -71,10 +71,12 @@ Versions are cut by CI from the commit types. Nobody pushes a tag. When the chec
 or `perf` is the next patch. Anything else (`docs`, `test`, `chore`, `ci`, `refactor`, `build`,
 `style`) releases nothing.
 
-CI first checks that the new version builds. Then it commits `release: X.Y.Z` (the version in
-`Cargo.toml`, `Cargo.lock` and this README) and tags `vX.Y.Z`. The release workflow builds the binaries
-and pushes the image `snodra/snodra-event-browser:X.Y.Z`. The GitHub release comes last, with the
-binaries attached. Pull before you push: `main` then carries that commit.
+Before anything is tagged, CI builds the new version exactly as the release will: every binary
+target and the image. Then it commits `release: X.Y.Z` (the version in `Cargo.toml`, `Cargo.lock` and
+this README) and tags `vX.Y.Z`. The release workflow builds the binaries again from the tag. Once all of
+them are built, it pushes the image `snodra/snodra-event-browser:X.Y.Z` and checks that the image
+reports that version. The GitHub release comes last, with the binaries attached. Pull before you push:
+`main` then carries that commit.
 
 - Below 1.0.0, any `type!:` subject and any line starting `BREAKING CHANGE:` in a message count as a
   minor, never a major. 1.0.0 is declared by hand.
@@ -84,8 +86,14 @@ binaries attached. Pull before you push: `main` then carries that commit.
 - `scripts/next-version.sh` holds the rule. `for t in scripts/*.test.sh; do sh "$t"; done` tests it.
 
 If a release fails halfway (the tag exists, some artifacts do not), use **Re-run failed jobs** on that
-run. Every step is safe to repeat. Or run the `release` workflow by hand with the existing tag. **Re-run
-all jobs** on a run that released does nothing, because `main` has moved to its release commit.
+run. Or run the `release` workflow by hand with the existing tag. Both repeat only what is safe to
+repeat: the image tags are pushed again (a new digest for the same version), and the GitHub release is
+edited, not duplicated. **Re-run all jobs** on a run that released does nothing, because `main` has
+moved to its release commit. If the failure needs a change to the code, that version is never
+finished: the next `fix` releases the next patch.
+
+The end-to-end tests run against the hub image pinned in `.github/workflows/ci.yml`. The repository
+variable `SNODRA_SERVER_VERSION`, when set, overrides it.
 
 ## License
 
