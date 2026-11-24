@@ -1,14 +1,61 @@
-# `cross` builds run inside its own container, so protoc (needed by the
-# snodra-messaging-rs build script that generates the hub client) is installed there.
-# Native runners get it from `arduino/setup-protoc` in the release workflow instead.
+# `cross` builds run inside its own container (Ubuntu 16.04 to 20.04 images), so what the build
+# scripts need is installed there before cargo runs. cross 0.2.5 runs these lines in one shell with
+# `eval`: the first one makes any failing line stop the image build, so every line is one command
+# (`set -e` does not stop inside an `a && b` list).
+# - protoc 29.3, the version the release workflow installs on its native runners
+#   (arduino/setup-protoc), from the protobuf release and checked against its SHA-256. The images'
+#   own protobuf-compiler is too old for proto3 on Ubuntu 16.04 (2.6.1). The snodra-messaging-rs
+#   build script runs it to generate the hub client.
+# - curl's headers, and only the headers: librdkafka 2.12 includes <curl/curl.h> in rdkafka_conf.c
+#   even when it is built without curl (`#ifdef` on a macro that is always defined, as 0). Nothing
+#   from curl is compiled in or linked. The image's package installs them for the image's own
+#   architecture, so they are copied to the include directory of the target's compiler.
 [target.x86_64-unknown-linux-gnu]
-pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+pre-build = [
+    "set -e",
+    "apt-get update",
+    "apt-get install -y --no-install-recommends unzip libcurl4-openssl-dev",
+    "curl -fsSL -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-x86_64.zip",
+    "echo '3e866620c5be27664f3d2fa2d656b5f3e09b5152b42f1bedbf427b333e90021a  /tmp/protoc.zip' | sha256sum -c -",
+    "unzip -q -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*'",
+    "rm /tmp/protoc.zip",
+]
 
 [target.aarch64-unknown-linux-gnu]
-pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+pre-build = [
+    "set -e",
+    "apt-get update",
+    "apt-get install -y --no-install-recommends unzip libcurl4-openssl-dev",
+    "curl -fsSL -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-x86_64.zip",
+    "echo '3e866620c5be27664f3d2fa2d656b5f3e09b5152b42f1bedbf427b333e90021a  /tmp/protoc.zip' | sha256sum -c -",
+    "unzip -q -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*'",
+    "rm /tmp/protoc.zip",
+    "h=$(dpkg -L libcurl4-openssl-dev | grep -m1 '/curl/curl\\.h$')",
+    "cp -r \"${h%/curl.h}\" /usr/aarch64-linux-gnu/include/",
+]
 
 [target.x86_64-unknown-linux-musl]
-pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+pre-build = [
+    "set -e",
+    "apt-get update",
+    "apt-get install -y --no-install-recommends unzip libcurl4-openssl-dev",
+    "curl -fsSL -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-x86_64.zip",
+    "echo '3e866620c5be27664f3d2fa2d656b5f3e09b5152b42f1bedbf427b333e90021a  /tmp/protoc.zip' | sha256sum -c -",
+    "unzip -q -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*'",
+    "rm /tmp/protoc.zip",
+    "h=$(dpkg -L libcurl4-openssl-dev | grep -m1 '/curl/curl\\.h$')",
+    "cp -r \"${h%/curl.h}\" \"$CROSS_MUSL_SYSROOT/include/\"",
+]
 
 [target.aarch64-unknown-linux-musl]
-pre-build = ["apt-get update && apt-get install -y protobuf-compiler"]
+pre-build = [
+    "set -e",
+    "apt-get update",
+    "apt-get install -y --no-install-recommends unzip libcurl4-openssl-dev",
+    "curl -fsSL -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v29.3/protoc-29.3-linux-x86_64.zip",
+    "echo '3e866620c5be27664f3d2fa2d656b5f3e09b5152b42f1bedbf427b333e90021a  /tmp/protoc.zip' | sha256sum -c -",
+    "unzip -q -o /tmp/protoc.zip -d /usr/local bin/protoc 'include/*'",
+    "rm /tmp/protoc.zip",
+    "h=$(dpkg -L libcurl4-openssl-dev | grep -m1 '/curl/curl\\.h$')",
+    "cp -r \"${h%/curl.h}\" \"$CROSS_MUSL_SYSROOT/include/\"",
+]
