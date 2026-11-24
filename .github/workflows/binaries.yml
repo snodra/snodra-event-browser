@@ -102,6 +102,12 @@ jobs:
         with:
           version: "29.3"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      # librdkafka 2.12 includes <curl/curl.h> even when it is built without curl; only the header
+      # is needed, nothing is linked. macOS and Windows have it. The Linux legs that `cross` builds
+      # get it in their container (Cross.toml); this is for the one built natively here.
+      - name: curl's headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcurl4-openssl-dev
       # dry-run: builds and archives, uploads nothing, and gets no token. The ref only names the
       # archive (the tag may not exist yet).
       - name: build
