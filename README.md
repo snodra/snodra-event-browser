@@ -71,8 +71,8 @@ Versions are cut by CI from the commit types. Nobody pushes a tag. When the chec
 or `perf` is the next patch. Anything else (`docs`, `test`, `chore`, `ci`, `refactor`, `build`,
 `style`) releases nothing.
 
-Before anything is tagged, CI builds the new version exactly as the release will: every binary
-target and the image. Then it commits `release: X.Y.Z` (the version in `Cargo.toml`, `Cargo.lock` and
+Before anything is tagged, CI builds the new version as the release will: every binary
+target and the amd64 image (the arm64 image is first built by the release, before it pushes anything). Then it commits `release: X.Y.Z` (the version in `Cargo.toml`, `Cargo.lock` and
 this README) and tags `vX.Y.Z`. The release workflow builds the binaries again from the tag. Once all of
 them are built, it pushes the image `snodra/snodra-event-browser:X.Y.Z` and checks that the image
 reports that version. The GitHub release comes last, with the binaries attached. Pull before you push:
